@@ -1,0 +1,130 @@
+@font-face {
+    font-family: Assistant;
+    src: url("ressources/Assistant.ttf");
+}
+
+@font-face {
+    font-family: Manrope;
+    src: url("ressources/Manrope.ttf");
+}
+
+*{
+    /* https://github.com/enkia/tokyo-night-vscode-theme */
+    --red       : #f7768e;
+    --orange    : #ff9e64;
+    --yellow    : #e0af68; 
+    --green     : #9ece6a;
+    --greenblue : #73daca;
+    --lighcyan  : #b4f9f8;
+    --cyan      : #2ac3de;
+    --blue      : #7dcfff;
+    --darkblue  : #7aa2f7; 
+    --magenta   : #bb9af7;
+    --pinkwhite : #c0caf5; 
+    --greywhite : #a9b1d6;
+    --grey      : #9aa5ce; 
+    --white     : #cfc9c2; 
+    --dark      : #565f89;
+    --darker    : #414868;
+    --black     : #24283b; 
+    --darkblack : #1a1b26;
+
+    font-family: "Assistant", Arial, Helvetica, sans-serif;
+    color: var(--white);
+}
+html{
+    background-color: var(--darkblack);
+}
+body{
+   margin: calc( max(0%, 15% - 75px) + 15px);
+   margin-top:2%;
+}
+canvas{
+    width: 800px;
+    height: 800px;
+    border: 1px solid var(--dark);
+}
+input, select{
+    border: 1px solid var(--greywhite);
+    margin: 5px;
+}
+input, select, button, textarea{
+    background-color: var(--darkblack);
+    color: var(--white);
+    padding: 0px 5px 0px 5px;
+}
+textarea{
+    width:100%;
+    height: 170px;
+    font-size: 10pt;
+}
+option{
+    color:var(--white);
+}
+
+#profile_name, .main_title{
+    color: var(--white);
+    font-weight: normal;
+    font-size:   30pt;
+    font-family: "Manrope", Arial, Helvetica, sans-serif;
+}
+
+.subtitle{
+    color: var(--greenblue);
+    font-size:   20pt;
+    line-height: 20px;
+    margin-top:  15px;
+    margin-bottom: 5px;
+}
+
+.explanations p{
+    margin-top: 10px;
+    padding: 0px 15px 0px 15px;
+}
+
+#main_content{
+    display:flex;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+}
+#parameters{
+    width: 550px;
+}
+#parameters input{
+    display:block;
+}
+
+.panel{
+    background-color: var(--black);
+    border: 1px solid var(--dark);
+}
+.printedMatrix input{
+    width:50px;
+}
+
+.tabs_list{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    align-items: center;
+    border-bottom: 1px solid var(--dark);
+    margin-bottom: 8px;
+}
+.tabs_list > div{
+    padding:8px;
+}
+.tabs_list .selectedTab{
+    background-color: var(--dark);
+}
+.tabs_content > div{
+    display:none;
+    padding: 0px 12px 0px 12px;
+    width: 92%;
+}
+
+#mainTab_content{
+    padding: 5px 0px 15px 0px;
+}
+#debug_panel{
+    padding:10px;
+}

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <h1 class="main_title">Path tracer</h1>
+        <p class="subtitle">Web path tracer</p>
+        <hr>
+        <br>
+        <div id="main_content">
+            <div>
+              
+            </div>
+            <canvas id="canvas" width="800" height="800"></canvas>
+        </div>
+        <hr>
+        <div class="explanations">
+            <p>
+                Path tracer
+            </p>
+        </div>
+    </body>    
+    <script>
+        class Ray {
+            constructor(origin, direction){
+                this.origin = origin
+                this.direction = direction
+            }
+
+            getDir(){
+                return this.direction
+            }
+
+            at(t){
+                return this.origin.add(this.direction.mul(t))
+            }
+        }
+
+        class Vec3 {
+            constructor(x,y,z){
+                this.x = x
+                this.y = y
+                this.z = z
+            }
+
+            mul(scalar){
+                return new Vec3( this.x * scalar, this.y * scalar, this.z * scalar)
+            }
+
+            sub(vec){
+                return new Vec3(this.x - vec.x, this.y - vec.y, this.z - vec.z)
+            }
+
+            add(vec){
+                return new Vec3(this.x + vec.x, this.y + vec.y, this.z + vec.z)
+            }
+
+            dot(vec){
+                return this.x * vec.x + this.y * vec.y + this.z * vec.z
+            }
+
+            norm(){
+                return Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z)
+            }
+
+            normalized(){
+                let norm = this.norm()
+                return new Vec3(this.x/norm, this.y/norm, this.z/norm)
+            }
+        }
+
+        class Sphere{
+            constructor(center, radius){
+                this.center = center
+                this.radius = radius
+            }
+
+            hit(ray){
+                let diff = ray.origin.sub(this.center)
+                let a = ray.direction.dot(ray.direction)
+                let b = 2*ray.direction.dot(diff)
+                let c = diff.dot(diff) - this.radius*this.radius
+                let discriminant = b*b - 4*a*c
+                if(discriminant >= 0){
+                    return (-b-Math.sqrt(discriminant))/(2*a)
+                }else{
+                    return Infinity
+                }
+            }
+
+            normalAt(position){
+                return position.sub(this.center).normalized()
+            }
+        }
+
+        /*
+            For now the camera is at (0,0,0)
+        */
+        class Camera{
+            constructor(viewport_width, viewport_height, focal_length){
+                this.viewport_width  = viewport_width
+                this.viewport_height = viewport_height
+                this.focal_length    = focal_length
+                this.position        = new Vec3(0,0,0)
+            }
+
+            getRay(u, v){
+                let direction = new Vec3( 
+                    u*this.viewport_width  - this.viewport_width/2, 
+                    -(v*this.viewport_height - this.viewport_height/2), 
+                    -this.focal_length
+                )
+                return new Ray( this.position, direction )
+            }
+        }
+
+        const canvas = document.getElementById("canvas")
+        const ctx = canvas.getContext("2d")
+        const imageData = ctx.createImageData(canvas.width, canvas.height)
+
+        const camera = new Camera(2,2,2)
+
+        let objs = [
+            new Sphere( new Vec3(0,0,-4), 1),
+            new Sphere( new Vec3(0,-8,-4), 7)
+        ]
+
+
+        for(let y=0; y<imageData.height; y++){
+            for(let x=0; x<imageData.width; x++){
+                const index = x*4 + y*4*imageData.width
+
+                let final_color = [0,0,0,0]
+                let nb_sample = 2
+
+                for(let sample=0; sample < nb_sample; sample++){
+                    let color = [0,0,0,0]
+                    let dx = Math.random()
+                    let dy = Math.random()
+                    let ray = camera.getRay( (x+dx)/800, (y+dy)/800)
+
+                    let obj_found = undefined
+                    let t = Infinity
+
+                    objs.forEach(obj => {
+                        let t_tmp = obj.hit(ray)
+
+                        if(t_tmp !== Infinity){
+                            //console.log(ray)
+                        }
+                        if(t_tmp < t){
+                            t = t_tmp
+                            obj_found = obj
+                        }
+                    })
+
+
+                    if(t !== Infinity){
+                        //console.log(ray.at(t))
+                        let normal = obj_found.normalAt(ray.at(t))
+
+                            color = [255*((normal.x+1)/2), 255*((normal.y+1)/2), 255*((normal.z+1)/2), 255]
+                        
+                    }else{
+                        color = [1-ray.getDir().y*255, 1-ray.getDir().y*255, 255, 255]
+                    }
+
+                    final_color[0] += color[0]/nb_sample
+                    final_color[1] += color[1]/nb_sample
+                    final_color[2] += color[2]/nb_sample
+                    final_color[3] += color[3]/nb_sample
+                }
+
+                imageData.data[index]   = final_color[0]
+                imageData.data[index+1] = final_color[1]
+                imageData.data[index+2] = final_color[2]
+                imageData.data[index+3] = final_color[3]
+            }
+        }
+        ctx.putImageData(imageData, 0, 0)
+    </script>  
+</html>
