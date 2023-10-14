@@ -9,16 +9,12 @@
         <hr>
         <br>
         <div id="main_content">
-            <div>
-              
-            </div>
+            <div></div>
             <canvas id="canvas" width="800" height="800"></canvas>
         </div>
         <hr>
         <div class="explanations">
-            <p>
-                Path tracer
-            </p>
+            <p>Path tracer</p>
         </div>
     </body>    
     <script>
@@ -26,10 +22,6 @@
             constructor(origin, direction){
                 this.origin = origin
                 this.direction = direction
-            }
-
-            getDir(){
-                return this.direction
             }
 
             at(t){
@@ -68,6 +60,19 @@
                 let norm = this.norm()
                 return new Vec3(this.x/norm, this.y/norm, this.z/norm)
             }
+
+            static random(){
+                return new Vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1)
+            }
+
+            static random_spheric(){
+                while(true){
+                    let vec = this.random()
+                    if(vec.norm() <= 1){
+                        return vec
+                    }
+                }
+            }
         }
 
         class Sphere{
@@ -83,7 +88,8 @@
                 let c = diff.dot(diff) - this.radius*this.radius
                 let discriminant = b*b - 4*a*c
                 if(discriminant >= 0){
-                    return (-b-Math.sqrt(discriminant))/(2*a)
+                    let t  = (-b-Math.sqrt(discriminant))/(2*a)
+                    return t > 0.0001 ? t : Infinity
                 }else{
                     return Infinity
                 }
@@ -94,9 +100,7 @@
             }
         }
 
-        /*
-            For now the camera is at (0,0,0)
-        */
+        /* For now the camera is at (0,0,0) */
         class Camera{
             constructor(viewport_width, viewport_height, focal_length){
                 this.viewport_width  = viewport_width
@@ -120,11 +124,54 @@
         const imageData = ctx.createImageData(canvas.width, canvas.height)
 
         const camera = new Camera(2,2,2)
+        const sky_color = [200, 200, 255, 255]
 
         let objs = [
             new Sphere( new Vec3(0,0,-4), 1),
-            new Sphere( new Vec3(0,-8,-4), 7)
+            new Sphere( new Vec3(0,-21,-4), 20),
+
+            new Sphere( new Vec3(1.5,  1.5, -5), 0.5),
+            new Sphere( new Vec3(-1.5, 1.5, -5), 0.5),
         ]
+
+        function trace(ray, objs){
+            const max_iterations = 30
+            let color = [255, 255, 255, 255]
+            let multiplier = [0.5, 0.5, 0.5, 1]
+
+            for(let i=0; i<max_iterations; i++){
+                let obj_found = undefined
+                let t = Infinity
+
+                objs.forEach(obj => {
+                    let t_tmp = obj.hit(ray)
+                    if(t_tmp < t){
+                        t = t_tmp
+                        obj_found = obj
+                    }
+                })
+
+                if(t !== Infinity){
+                    let hit_point = ray.at(t)
+                    let new_dir = Vec3.random_spheric()
+                    let normal = obj_found.normalAt(hit_point)
+                    ray.origin = hit_point
+                    ray.direction = normal.dot(new_dir) >= 0 ? new_dir : new_dir.mul(-1)
+
+                    color[0] *= multiplier[0]
+                    color[1] *= multiplier[1]
+                    color[2] *= multiplier[2]
+                    color[3] *= multiplier[3]
+                }else{
+                    color[0] *= sky_color[0]/255
+                    color[1] *= sky_color[1]/255
+                    color[2] *= sky_color[2]/255
+                    color[3] *= sky_color[3]/255
+                    break
+                }
+            }
+            return color
+        }
 
 
         for(let y=0; y<imageData.height; y++){
@@ -132,7 +179,7 @@
                 const index = x*4 + y*4*imageData.width
 
                 let final_color = [0,0,0,0]
-                let nb_sample = 2
+                let nb_sample = 50
 
                 for(let sample=0; sample < nb_sample; sample++){
                     let color = [0,0,0,0]
@@ -140,31 +187,7 @@
                     let dy = Math.random()
                     let ray = camera.getRay( (x+dx)/800, (y+dy)/800)
 
-                    let obj_found = undefined
-                    let t = Infinity
-
-                    objs.forEach(obj => {
-                        let t_tmp = obj.hit(ray)
-
-                        if(t_tmp !== Infinity){
-                            //console.log(ray)
-                        }
-                        if(t_tmp < t){
-                            t = t_tmp
-                            obj_found = obj
-                        }
-                    })
-
-
-                    if(t !== Infinity){
-                        //console.log(ray.at(t))
-                        let normal = obj_found.normalAt(ray.at(t))
-
-                            color = [255*((normal.x+1)/2), 255*((normal.y+1)/2), 255*((normal.z+1)/2), 255]
-                        
-                    }else{
-                        color = [1-ray.getDir().y*255, 1-ray.getDir().y*255, 255, 255]
-                    }
+                    color = trace(ray, objs)
 
                     final_color[0] += color[0]/nb_sample
                     final_color[1] += color[1]/nb_sample
