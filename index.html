@@ -3,76 +3,74 @@
     <head>
         <link rel="stylesheet" href="style.css">
     </head>
-    <body>
+    <body onload="init()">
         <h1 class="main_title">Path tracer</h1>
-        <p class="subtitle">Web path tracer</p>
+        <p class="subtitle">Web-based path tracer</p>
         <hr>
         <br>
         <div id="main_content">
-            <div></div>
+            <div>
+                <div id="parameters"></div>
+                <hr>
+                <div class="center flex-column">
+                    <div id="bottom_parameters"></div>
+                    <button onclick="render()">Render</button>
+                </div>
+            </div>
             <canvas id="canvas" width="800" height="800"></canvas>
         </div>
         <hr>
         <div class="explanations">
-            <p>Path tracer</p>
+            <p>This is a very simple path tracer implemented purely in javascript.</p>
+            <p>For now it is very limited. Numerous new features are planned. For now it has the following features : </p>
+            <ul>
+                <li>Handles spheres rendering</li>
+                <li>User-defined number of samples per pixels (for now the samples in each pixel have random position)</li>
+                <li>Camera with modifiable position and FOV</li>
+            </ul>
         </div>
-    </body>    
+    </body>
+    <script src="js/primitives.js"></script>
+    <script type="module">
+        import Slider from "./js/ui/slider.js"
+        import Tabs from "./js/ui/tabs.js"
+        document.Slider = Slider
+        document.Tabs   = Tabs
+    </script>
     <script>
-        class Ray {
-            constructor(origin, direction){
-                this.origin = origin
-                this.direction = direction
-            }
+        function init(){
+            Slider = document.Slider
+            Tabs = document.Tabs
 
-            at(t){
-                return this.origin.add(this.direction.mul(t))
-            }
-        }
-
-        class Vec3 {
-            constructor(x,y,z){
-                this.x = x
-                this.y = y
-                this.z = z
-            }
-
-            mul(scalar){
-                return new Vec3( this.x * scalar, this.y * scalar, this.z * scalar)
-            }
-
-            sub(vec){
-                return new Vec3(this.x - vec.x, this.y - vec.y, this.z - vec.z)
-            }
-
-            add(vec){
-                return new Vec3(this.x + vec.x, this.y + vec.y, this.z + vec.z)
-            }
-
-            dot(vec){
-                return this.x * vec.x + this.y * vec.y + this.z * vec.z
-            }
-
-            norm(){
-                return Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z)
-            }
-
-            normalized(){
-                let norm = this.norm()
-                return new Vec3(this.x/norm, this.y/norm, this.z/norm)
-            }
-
-            static random(){
-                return new Vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1)
-            }
-
-            static random_spheric(){
-                while(true){
-                    let vec = this.random()
-                    if(vec.norm() <= 1){
-                        return vec
-                    }
+            document.global_params = {
+                samples_per_pixel: 5,
+                camera:{
+                    fov: 45,
+                    x:0,
+                    y:0,
+                    z:0
                 }
             }
+
+            let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Camera", "Objects"], "Camera")
+            tabs.setContent("Camera", `
+                <p>Position</p>
+                <div id="camera_position"></div>
+                <p>Lens</p>
+                <div id="camera_others"></div>
+            `)
+            tabs.setContent("Objects", `
+                <p>-- Tab under construction --</p>
+            `)
+
+            new Slider("camera_position", "X", 0,  val=>document.global_params.camera.x=val, -20, 20, 1)
+            new Slider("camera_position", "Y", 0,  val=>document.global_params.camera.y=val, -20, 20, 1)
+            new Slider("camera_position", "Z", 0,  val=>document.global_params.camera.z=val, -20, 20)
+            new Slider("camera_others", "Field of view", 45, val=>document.global_params.camera.fov=val, 5, 170)
+
+            new Slider("bottom_parameters", "Samples per pixel", 5,  val=>document.global_params.samples_per_pixel=val, 1, 50, 1, 0)
+
+            render()
         }
 
         class Sphere{
@@ -100,13 +98,12 @@
             }
         }
 
-        /* For now the camera is at (0,0,0) */
         class Camera{
-            constructor(viewport_width, viewport_height, focal_length){
-                this.viewport_width  = viewport_width
-                this.viewport_height = viewport_height
-                this.focal_length    = focal_length
-                this.position        = new Vec3(0,0,0)
+            constructor(aspect_ratio, fov, position){
+                this.viewport_width  = 1
+                this.viewport_height = 1/aspect_ratio
+                this.focal_length    = (this.viewport_width/2) / Math.tan(fov*(Math.PI/180)/2)
+                this.position        = position
             }
 
             getRay(u, v){
@@ -119,11 +116,6 @@
             }
         }
 
-        const canvas = document.getElementById("canvas")
-        const ctx = canvas.getContext("2d")
-        const imageData = ctx.createImageData(canvas.width, canvas.height)
-
-        const camera = new Camera(2,2,2)
         const sky_color = [200, 200, 255, 255]
 
         let objs = [
@@ -134,8 +126,67 @@
             new Sphere( new Vec3(-1.5, 1.5, -5), 0.5),
         ]
 
-        function trace(ray, objs){
-            const max_iterations = 30
+        function perfectDiffuse(ray, t, obj){
+            let hit_point = ray.at(t)
+            let new_dir = Vec3.random_spheric()
+            let normal = obj.normalAt(hit_point)
+            ray.origin = hit_point
+            ray.direction = normal.dot(new_dir) >= 0 ? new_dir : new_dir.mul(-1)
+        }
+
+        function lambertianDiffuse(ray, t, obj){
+            let hit_point = ray.at(t)
+            let new_dir = Vec3.random_spheric().normalized()
+            let normal = obj.normalAt(hit_point)
+            ray.origin = hit_point
+            ray.direction = normal.add(new_dir)
+        }
+
+        function mirror(ray, t, obj){
+            let hit_point = ray.at(t)
+            let new_dir = Vec3.random_spheric().normalized()
+            let normal = obj.normalAt(hit_point)
+            ray.origin = hit_point
+            ray.direction = ray.direction.sub(normal.mul(2*ray.direction.dot(normal)))
+        }
+
+        function granular_mirror(ray, t, obj){
+            const granular_factor = 0.1
+            let hit_point = ray.at(t)
+            let new_dir = Vec3.random_spheric().normalized()
+            let normal = obj.normalAt(hit_point)
+            ray.origin = hit_point
+            ray.direction = ray.direction.sub(normal.mul(2*ray.direction.dot(normal))).add(Vec3.random_spheric().normalized().mul(granular_factor))
+        }
+
+        function refract(ray, t, obj){
+            let hit_point = ray.at(t)
+            let normal = obj.normalAt(hit_point)
+
+            let eta   = 1
+            let eta_p = 1.4
+
+            if(eta/eta_p * Math.sqrt(1-ray.direction.dot(normal)*ray.direction.dot(normal)) > 1){
+                mirror(ray, t, obj)
+            }else{
+                let perpendicular = ray.direction.add(normal.mul( ray.direction.mul(-1).dot(normal)) ).mul(eta/eta_p)
+                let parallel = normal.mul(-Math.sqrt(1-perpendicular.norm_squared()))
+
+                ray.origin = hit_point
+                ray.direction = perpendicular.add(parallel)
+            }
+        }
+
+        function gamma_correct(color){
+            return [
+                Math.sqrt(color[0]/255)*255,
+                Math.sqrt(color[1]/255)*255,
+                Math.sqrt(color[2]/255)*255,
+                color[3]
+            ]
+        }
+
+        function trace(ray, objs, max_iterations=50){
             let color = [255, 255, 255, 255]
             let multiplier = [0.5, 0.5, 0.5, 1]
 
@@ -152,11 +203,7 @@
                 })
 
                 if(t !== Infinity){
-                    let hit_point = ray.at(t)
-                    let new_dir = Vec3.random_spheric()
-                    let normal = obj_found.normalAt(hit_point)
-                    ray.origin = hit_point
-                    ray.direction = normal.dot(new_dir) >= 0 ? new_dir : new_dir.mul(-1)
+                    lambertianDiffuse(ray, t, obj_found)
 
                     color[0] *= multiplier[0]
                     color[1] *= multiplier[1]
@@ -170,37 +217,44 @@
                     break
                 }
             }
-            return color
+            return gamma_correct(color)
         }
+ 
+        function render(){
+            const canvas    = document.getElementById("canvas")
+            const imageData = canvas.getContext("2d").createImageData(canvas.width, canvas.height)
 
+            const params = document.global_params
 
-        for(let y=0; y<imageData.height; y++){
-            for(let x=0; x<imageData.width; x++){
-                const index = x*4 + y*4*imageData.width
+            const camera = new Camera(canvas.width/canvas.height, params.camera.fov, new Vec3(params.camera.x, params.camera.y, params.camera.z))
 
-                let final_color = [0,0,0,0]
-                let nb_sample = 50
+            for(let y=0; y<imageData.height; y++){
+                for(let x=0; x<imageData.width; x++){
+                    const index = x*4 + y*4*imageData.width
 
-                for(let sample=0; sample < nb_sample; sample++){
-                    let color = [0,0,0,0]
-                    let dx = Math.random()
-                    let dy = Math.random()
-                    let ray = camera.getRay( (x+dx)/800, (y+dy)/800)
+                    let final_color = [0,0,0,0]
 
-                    color = trace(ray, objs)
+                    for(let sample=0; sample < params.samples_per_pixel; sample++){
+                        let color = [0,0,0,0]
+                        let dx = Math.random()
+                        let dy = Math.random()
+                        let ray = camera.getRay( (x+dx)/canvas.width, (y+dy)/canvas.height)
 
-                    final_color[0] += color[0]/nb_sample
-                    final_color[1] += color[1]/nb_sample
-                    final_color[2] += color[2]/nb_sample
-                    final_color[3] += color[3]/nb_sample
+                        color = trace(ray, objs)
+
+                        final_color[0] += color[0]/params.samples_per_pixel
+                        final_color[1] += color[1]/params.samples_per_pixel
+                        final_color[2] += color[2]/params.samples_per_pixel
+                        final_color[3] += color[3]/params.samples_per_pixel
+                    }
+
+                    imageData.data[index]   = final_color[0]
+                    imageData.data[index+1] = final_color[1]
+                    imageData.data[index+2] = final_color[2]
+                    imageData.data[index+3] = final_color[3]
                 }
-
-                imageData.data[index]   = final_color[0]
-                imageData.data[index+1] = final_color[1]
-                imageData.data[index+2] = final_color[2]
-                imageData.data[index+3] = final_color[3]
             }
+            canvas.getContext("2d").putImageData(imageData, 0, 0)
         }
-        ctx.putImageData(imageData, 0, 0)
     </script>  
 </html>
