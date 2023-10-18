@@ -1,60 +1,143 @@
 export class Ray {
-    constructor(origin, direction){
-        this.origin = origin
-        this.direction = direction
+    constructor(){console.error("Ray has no constructor !")}
+
+    static new(origin, direction){
+        return {origin:origin, direction:direction}
     }
 
-    at(t){
-        return this.origin.add(this.direction.mul(t))
+    static moveAt(ray, t){
+        ray.origin.x += ray.direction.x * t
+        ray.origin.y += ray.direction.y * t
+        ray.origin.z += ray.direction.z * t
     }
 }
 
 export class Vec3 {
-    constructor(x,y,z){
-        this.x = x
-        this.y = y
-        this.z = z
+    constructor(){console.error("Vec3 has no constructor !")}
+
+    static new(x, y, z){
+        return {x:x, y:y, z:z}
     }
 
-    mul(scalar){
-        return new Vec3( this.x * scalar, this.y * scalar, this.z * scalar)
+    static clone(self){
+        return {x:self.x, y:self.y, z:self.z}
     }
 
-    sub(vec){
-        return new Vec3(this.x - vec.x, this.y - vec.y, this.z - vec.z)
+    static equal(self, other){
+        self.x = other.x
+        self.y = other.y
+        self.z = other.z
     }
 
-    add(vec){
-        return new Vec3(this.x + vec.x, this.y + vec.y, this.z + vec.z)
+    static mul(self, scalar){
+        self.x *= scalar
+        self.y *= scalar
+        self.z *= scalar
+        return self
     }
 
-    dot(vec){
-        return this.x * vec.x + this.y * vec.y + this.z * vec.z
+    static sub(self, other){
+        self.x -= other.x
+        self.y -= other.y
+        self.z -= other.z
+        return self
     }
 
-    norm(){
-        return Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z)
+    static add(self, other){
+        self.x += other.x
+        self.y += other.y
+        self.z += other.z
+        return self
     }
 
-    norm_squared(){
-        return this.x*this.x + this.y*this.y + this.z*this.z
+    static cross(self, other){
+        let tmp_x = self.x
+        let tmp_y = self.y
+        let tmp_z = self.z
+        self.x = tmp_y*other.z - tmp_z*other.y
+        self.y = tmp_z*other.x - tmp_x*other.z
+        self.z = tmp_x*other.y - tmp_y*other.x
+        return self
     }
 
-    normalized(){
-        let norm = this.norm()
-        return new Vec3(this.x/norm, this.y/norm, this.z/norm)
+    static dot(self, other){
+        return self.x * other.x + self.y * other.y + self.z * other.z
     }
 
-    static random(){
-        return new Vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1)
+    static norm(self){
+        return Math.sqrt(Vec3.norm_squared(self))
     }
 
-    static random_spheric(){
-        while(true){
-            let vec = this.random()
-            if(vec.norm() <= 1){
-                return vec
-            }
+    static norm_squared(self){
+        return self.x*self.x + self.y*self.y + self.z*self.z
+    }
+
+    static normalize(self){
+        let norm = Vec3.norm(self)
+        self.x /= norm
+        self.y /= norm
+        self.z /= norm
+        return self
+    }
+
+    static random(self){
+        self.x = Math.random()*2-1
+        self.y = Math.random()*2-1
+        self.z = Math.random()*2-1
+    }
+
+    // Can be improved but ok for now
+    static random_spheric(self){
+        Vec3.random(self)
+        while(Vec3.norm(self) > 1){
+            Vec3.random(self)
         }
+        return self
+    }
+}
+
+export class Color{
+    constructor(){console.error("Color has no constructor !")}
+
+    static new(r, g, b, a=1){
+        return {r:r, g:g, b:b, a:a}
+    }
+
+    static equal(self, other){
+        self.r = other.r
+        self.g = other.g
+        self.b = other.b
+        self.a = other.a
+    }
+
+    static add(self, other){
+        self.r += other.r
+        self.g += other.g
+        self.b += other.b
+        self.a += other.a
+        return self
+    }
+
+    static mul(self, other){
+        self.r *= other.r
+        self.g *= other.g
+        self.b *= other.b
+        self.a *= other.a
+        return self
+    }
+
+    static div(self, scalar){
+        self.r /= scalar
+        self.g /= scalar
+        self.b /= scalar
+        self.a /= scalar
+        return self
+    }
+
+    static gamma_correct(self){
+        self.r = Math.sqrt(self.r)
+        self.g = Math.sqrt(self.g)
+        self.b = Math.sqrt(self.b)
+        return self
     }
 }

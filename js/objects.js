@@ -3,72 +3,66 @@ import { Vec3 } from "./primitives.js"
 export function hitDispatch(obj, ray){
     switch(obj.name){
         case "Sphere":
-            return Sphere.hit(ray, obj)
+            return Sphere.hit(obj, ray)
         case "Triangle":
-            return Triangle.hit(ray, obj)
+            return Triangle.hit(obj, ray)
         default:
-            console.error("Unknown object : ")
-            console.error(obj)
+            console.error(`Unknown object : ${obj}`)
     }
 }
 
 export function normalAtDispatch(obj, position){
     switch(obj.name){
         case "Sphere":
-            return Sphere.normalAt(position, obj)
+            return Sphere.normalAt(obj, position)
         case "Triangle":
-            return Triangle.normalAt(position, obj)
+            return Triangle.normalAt(obj, position)
         default :
-            console.error("Unknown object : ")
-            console.error(obj)
+            console.error(`Unknown object : ${obj}`)
     }
 }
 
 export class Sphere{
-    constructor(center, radius){
-        this.name   = "Sphere"
-        this.center = center
-        this.radius = radius
+    constructor(){console.error("Sphere has no constructor !")}
+
+    static new(center, radius){
+        return {name:"Sphere", center:center, radius:radius}
     }
 
-    static hit(ray, obj){
-        let center = new Vec3(obj.center.x, obj.center.y, obj.center.z)
-
-        let diff = ray.origin.sub(center)
-        let a = ray.direction.dot(ray.direction)
-        let b = 2*ray.direction.dot(diff)
-        let c = diff.dot(diff) - obj.radius*obj.radius
-        let discriminant = b*b - 4*a*c
+    static hit(self, ray){
+        const diff = Vec3.sub( Vec3.clone(ray.origin), self.center)
+        const a = Vec3.dot(ray.direction, ray.direction)
+        const b = 2*Vec3.dot(ray.direction, diff)
+        const c = Vec3.dot(diff, diff) - self.radius*self.radius
+        const discriminant = b*b - 4*a*c
         if(discriminant >= 0){
-            let t  = (-b-Math.sqrt(discriminant))/(2*a)
+            const t = (-b-Math.sqrt(discriminant))/(2*a)
             return t > 0.0001 ? t : Infinity
         }else{
             return Infinity
         }
     }
 
-    static normalAt(position, obj){
-        let center = new Vec3(obj.center.x, obj.center.y, obj.center.z)
-        return position.sub(center).normalized()
+    static normalAt(self, position){
+        return Vec3.normalize(Vec3.sub(Vec3.clone(position), self.center))
     }
 }
 
 export class Triangle{
-    constructor(p1, p2, p3){
-        this.name = "Triangle"
-        this.p1 = p1
-        this.p2 = p2
-        this.p3 = p3
+    constructor(){console.error("Triangle has no constructor !")}
+
+    static new(p1, p2, p3){
+        return {name:"Triangle", p1:p1, p2:p2, p3:p3}
     }
 
-    static hit(ray, obj){
-        let p1 = new Vec3(obj.p1.x, obj.p1.y, obj.p1.z)
-        let p2 = new Vec3(obj.p2.x, obj.p2.y, obj.p2.z)
-        let p3 = new Vec3(obj.p3.x, obj.p3.y, obj.p3.z)
+    static hit(self, ray){
+        let p1 = Vec3.clone(self.p1)
+        let p2 = Vec3.clone(self.p2)
+        let p3 = Vec3.clone(self.p3)
         // Translate
-        p1 = p1.sub(ray.origin)
-        p2 = p2.sub(ray.origin)
-        p3 = p3.sub(ray.origin)
+        Vec3.sub(p1, ray.origin)
+        Vec3.sub(p2, ray.origin)
+        Vec3.sub(p3, ray.origin)
         // Permute
         let max = Math.max(
             Math.abs(ray.direction.x), 
@@ -85,9 +79,9 @@ export class Triangle{
             [p3.y, p3.z] = [p3.z, p3.y]
         }
         // Shear
-        let sx = -ray.direction.x / ray.direction.z
-        let sy = -ray.direction.y / ray.direction.z
-        let sz = 1 / ray.direction.z
+        const sx = -ray.direction.x / ray.direction.z
+        const sy = -ray.direction.y / ray.direction.z
+        const sz = 1 / ray.direction.z
         p1.x += sx * p1.z
         p1.y += sy * p1.z
         p2.x += sx * p2.z
@@ -122,18 +116,12 @@ export class Triangle{
         return tScaled / det
     }
 
-    static normalAt(position, obj){
-        let p1 = new Vec3(obj.p1.x, obj.p1.y, obj.p1.z)
-        let p2 = new Vec3(obj.p2.x, obj.p2.y, obj.p2.z)
-        let p3 = new Vec3(obj.p3.x, obj.p3.y, obj.p3.z)
-
-        let v1 = p2.sub(p1)
-        let v2 = p3.sub(p1)
-        let res = new Vec3( // Cross product
-            v1.y*v2.z - v1.z*v2.y,
-            v1.z*v2.x - v1.x*v2.z,
-            v1.x*v2.y - v1.y*v2.x
-        )
-        return res.normalized()
+    static normalAt(self, position){
+        let p2 = Vec3.clone(self.p2)
+        let p3 = Vec3.clone(self.p3)
+        Vec3.sub(p2, self.p1)
+        Vec3.sub(p3, self.p1)
+        Vec3.cross(p2, p3)
+        return Vec3.normalize(p2)
     }
 }

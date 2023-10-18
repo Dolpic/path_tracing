@@ -1,54 +1,98 @@
 import Camera from "./camera.js"
 import { hitDispatch } from "./objects.js";
 import { lambertianDiffuse } from "./materials.js";
+import { Color } from "./primitives.js";
+import Timer from "./performance.js";
 
-onmessage = (e) => {
-    let params = e.data
-    let imgData = render(params.width, params.height, params.samples_per_pixel, params.camera, params.objs)
-    postMessage(imgData);
-};
-
-function render(width, height, samples_per_pixel, camera, objs){
-    let imageData = []
-    for(let y=0; y<height; y++){
-        for(let x=0; x<width; x++){
-            const index = x*4 + y*4*width
-            
-            let final_color = [0,0,0,0]
-            
-            for(let sample=0; sample < samples_per_pixel; sample++){
-                let color = [0,0,0,0]
-                let dx = Math.random()
-                let dy = Math.random()
-                let ray = Camera.getRay(camera, (x+dx)/width, (y+dy)/height)
-                
-                color = trace(ray, objs)
-                
-                final_color[0] += color[0]/samples_per_pixel
-                final_color[1] += color[1]/samples_per_pixel
-                final_color[2] += color[2]/samples_per_pixel
-                final_color[3] += color[3]/samples_per_pixel
-            }
-            
-            imageData[index]   = final_color[0]
-            imageData[index+1] = final_color[1]
-            imageData[index+2] = final_color[2]
-            imageData[index+3] = final_color[3]
-        }
-        /*document.getElementById("loading").innerHTML = "Processing : "+(y+1)+"/"+imageData.height
-        document.getElementById("loading").style.display = "none"
-        document.getElementById("loading").style.display = "inline-block"*/
-        console.log("Processing : "+(y+1)+"/"+height)
+onmessage = e => {
+    switch(e.data.msg){
+        case "init":
+            init(e.data.objs, e.data.camera)
+            break
+        case "start":
+            postMessage(render(e.data))
+            break
     }
-    return imageData
 }
 
-function trace(ray, objs, max_iterations=3){
-    const sky_color = [200, 200, 255, 255]
-    let color = [255, 255, 255, 255]
-    let multiplier = [0.5, 0.1, 0.1, 1]
+function init(objs, camera){
+    // TODO Remove the dispatch function and assign the Object prototypes here
+    self.objs = objs
+    self.camera = camera
+
+    self.sky_color     = Color.new(0.8, 0.8, 1, 1)
+    self.multiplier    = Color.new(0.6, 0.4, 0.4, 1)
+    self.current_color = Color.new(1, 1, 1, 1)
+    self.initial_color = Color.new(0.8, 0.8, 1, 1)
+    self.timer = new Timer()
+}
+
+function render(params){
+    const bytes_per_pixel = 4
+    const img_width    = params.img_width
+    const img_height   = params.img_height
+    const chunk_width  = params.chunk_width
+    const chunk_height = params.chunk_height
+    const startX       = params.startX
+    const startY       = params.startY
+    const samples_per_pixel = params.samples_per_pixel
+    let imageData = new Uint8ClampedArray(chunk_width*chunk_height*bytes_per_pixel)
+
+    let previous_index = 0
+
+    postMessage({msg:"progress", progress:0})
+    for(let y=startY; y<startY+chunk_height; y++){
+        for(let x=startX; x<startX+chunk_width; x++){
+            let final_color = Color.new(0,0,0,0)
+            
+            for(let sample=0; sample < samples_per_pixel; sample++){
+                const dx = Math.random()
+                const dy = Math.random()
+                const ray = Camera.getRay(self.camera, (x+dx)/img_width, (y+dy)/img_height)
+                const result = trace(ray, self.objs)
+                if(!result.has_hit){
+                    Color.add(final_color, result.color)
+                    break
+                }else{
+                    Color.div(result.color, samples_per_pixel)
+                    Color.add(final_color, result.color)
+                }
+            }
+
+            const index = bytes_per_pixel*( (x-startX) + (y-startY) *chunk_width)
+            imageData[index]   = final_color.r*255
+            imageData[index+1] = final_color.g*255
+            imageData[index+2] = final_color.b*255
+            imageData[index+3] = final_color.a*255
+
+            if(index-previous_index == 4000){
+                postMessage({msg:"progress", progress:(index-previous_index)/4})
+                previous_index = index
+            }
+        }
+    }
+
+    //timer.result()
     
+    postMessage({msg:"progress", progress:chunk_width*chunk_height-previous_index/4})
+    return {
+        msg:       "finished",
+        width:     chunk_width,
+        height:    chunk_height,
+        posX:      startX,
+        posY:      startY,
+        imageData: imageData
+    }
+}
+
+function trace(ray, objs, max_iterations=15){
+    let has_hit = false
+    Color.equal(self.current_color, self.initial_color)
+
     for(let i=0; i<max_iterations; i++){
+
+        //self.timer.start()
+
         let obj_found = undefined
         let t = Infinity
         
@@ -59,30 +103,23 @@ function trace(ray, objs, max_iterations=3){
                 obj_found = obj
             }
         })
-        
-        if(t !== Infinity){
-            lambertianDiffuse(ray, t, obj_found)
-            
-            color[0] *= multiplier[0]
-            color[1] *= multiplier[1]
-            color[2] *= multiplier[2]
-            color[3] *= multiplier[3]
-        }else{
-            color[0] *= sky_color[0]/255
-            color[1] *= sky_color[1]/255
-            color[2] *= sky_color[2]/255
-            color[3] *= sky_color[3]/255
+
+        //self.timer.step()
+
+        if(t === Infinity){
+            Color.mul(self.current_color, self.sky_color)
             break
         }
-    }
-    return gamma_correct(color)
-}
 
-function gamma_correct(color){
-    return [
-        Math.sqrt(color[0]/255)*255,
-        Math.sqrt(color[1]/255)*255,
-        Math.sqrt(color[2]/255)*255,
-        color[3]
-    ]
+        has_hit = true
+        lambertianDiffuse(ray, t, obj_found)
+        Color.mul(self.current_color, self.multiplier)
+
+        //self.timer.step()
+    }
+    
+    return {
+        has_hit: has_hit,
+        color: Color.gamma_correct(self.current_color)
+    }
 }

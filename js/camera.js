@@ -5,15 +5,20 @@ export default class Camera{
         this.viewport_width  = 1
         this.viewport_height = 1/aspect_ratio
         this.focal_length    = (this.viewport_width/2) / Math.tan(fov*(Math.PI/180)/2)
-        this.position        = position
+        this.default_position        = position
+
+        this.half_viewport_width  = this.viewport_width/2
+        this.half_viewport_height = this.viewport_height/2
+        this.minus_focal_length   = -this.focal_length
+
+        this.ray = Ray.new(Vec3.new(0,0,0), Vec3.new(0,0,0))
     }
 
     static getRay(camera, u, v){
-        let direction = new Vec3( 
-            u*camera.viewport_width  - camera.viewport_width/2, 
-            -(v*camera.viewport_height - camera.viewport_height/2), 
-            -camera.focal_length
-        )
-        return new Ray( new Vec3(camera.position.x, camera.position.y, camera.position.z), direction )
+        camera.ray.direction.x = u*camera.viewport_width    - camera.half_viewport_width
+        camera.ray.direction.y = -v*camera.viewport_height  + camera.half_viewport_height
+        camera.ray.direction.z = camera.minus_focal_length
+        Vec3.equal(camera.ray.origin, camera.default_position)
+        return camera.ray
     }
 }

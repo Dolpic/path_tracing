@@ -14,8 +14,9 @@
                 <hr>
                 <div class="center flex-column">
                     <div id="bottom_parameters"></div>
+                    <span>Note : For now the renderer is unoptimized. Rendering takes time.</span>
                     <button onclick="render()">Render</button>
-                    <p id="loading"></p>
+                    <p id="progress"></p>
                 </div>
             </div>
             <canvas id="canvas" width="800" height="800"></canvas>
@@ -23,9 +24,9 @@
         <hr>
         <div class="explanations">
             <p>This is a very simple path tracer implemented purely in javascript.</p>
-            <p>For now it is very limited. Numerous new features are planned. For now it has the following features : </p>
+            <p>For now it is very limited and not optimized. Numerous new features are planned. For now it has the following features : </p>
             <ul>
-                <li>Handles spheres rendering</li>
+                <li>Handles spheres and triangle rendering, with the feature to load any triangulated mesh</li>
                 <li>User-defined number of samples per pixels (for now the samples in each pixel have random position)</li>
                 <li>Camera with modifiable position and FOV</li>
             </ul>
@@ -48,22 +49,25 @@
     </script>
     <script>
         function init(){
-            Slider = document.Slider
-            Tabs   = document.Tabs
-            Camera = document.Camera
-            Ray = document.Ray
-            Vec3 = document.Vec3
-            Sphere = document.Sphere
+            Slider   = document.Slider
+            Tabs     = document.Tabs
+            Camera   = document.Camera
+            Ray      = document.Ray
+            Vec3     = document.Vec3
+            Sphere   = document.Sphere
             Triangle = document.Triangle
 
             document.global_params = {
                 samples_per_pixel: 5,
+                nb_workers:        12,
+                chunk_size:        100,
                 camera:{
                     fov: 45,
                     x:0,
                     y:0,
                     z:0
-                }
+                },
+                pixels_computed: 0
             }
 
             let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Camera", "Objects"], "Camera")
@@ -81,20 +85,25 @@
             new Slider("camera_position", "Y", 0,  val=>document.global_params.camera.y=val, -20, 20, 1)
             new Slider("camera_position", "Z", 0,  val=>document.global_params.camera.z=val, -20, 20)
             new Slider("camera_others", "Field of view", 45, val=>document.global_params.camera.fov=val, 5, 170)
-
             new Slider("bottom_parameters", "Samples per pixel", 5,  val=>document.global_params.samples_per_pixel=val, 1, 50, 1, 0)
 
             global_objs = [
                 //new Sphere( new Vec3(0,0,-4), 1),
-                new Sphere( new Vec3(0,-21,-4), 20),
+                Sphere.new( Vec3.new(0,-21,-4), 20),
+                Sphere.new( Vec3.new(1.5,  1.5, -5), 0.5),
+                Sphere.new( Vec3.new(-1.5, 1.5, -5), 0.5),
+                Triangle.new( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
 
-                new Sphere( new Vec3(1.5,  1.5, -5), 0.5),
-                new Sphere( new Vec3(-1.5, 1.5, -5), 0.5),
-
-                new Triangle( new Vec3(0.5,0.5,-5), new Vec3(-0.5,0.5,-2), new Vec3(0.5,-0.5,-2) )
+                Sphere.new( Vec3.new(-0.8, 1.5, -5), 0.1),
+                Sphere.new( Vec3.new(-0.6, 1.5, -5), 0.1),
+                Sphere.new( Vec3.new(-0.4, 1.5, -5), 0.1),
+                Sphere.new( Vec3.new(-0.2, 1.5, -5), 0.1),
+                Sphere.new( Vec3.new(0.0, 1.5, -5), 0.1),
+                Sphere.new( Vec3.new(0.2, 1.5, -5), 0.1),
+                Sphere.new( Vec3.new(0.4, 1.5, -5), 0.1),
+                Sphere.new( Vec3.new(0.6, 1.5, -5), 0.1),
+                Sphere.new( Vec3.new(0.8, 1.5, -5), 0.1),
             ]
-
-            //render()
         }
  
         function render(){
@@ -103,49 +112,115 @@
 
             const params = document.global_params
 
-            const camera = new Camera(canvas.width/canvas.height, params.camera.fov, new Vec3(params.camera.x, params.camera.y, params.camera.z))
+            const camera = new Camera(canvas.width/canvas.height, params.camera.fov, Vec3.new(params.camera.x, params.camera.y, params.camera.z))
 
+            let workers = []
+            for(let i=0; i<params.nb_workers; i++){
+                workers.push(new Worker("js/worker.js", {type: "module"}))
+            }
 
-            ModelHelper.loadWavefront("teapot/teapot_simple.obj").then( teapot => {
+            ModelHelper.loadWavefront("teapot/teapot_very_simple.obj").then( teapot => {
 
-                console.log(teapot)
+                let obj = [
+                    Sphere.new( Vec3.new(0,-21,-4), 20),
+                    Sphere.new( Vec3.new(1.2,  1.2, -5), 0.5),
+                    Sphere.new( Vec3.new(-1, 1.2, -5), 0.5),
+                    //Triangle.new( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
 
-                let obj = []
+                    /*Sphere.new( Vec3.new(-0.8, 1.5, -5), 0.1),
+                    Sphere.new( Vec3.new(-0.6, 1.5, -5), 0.1),
+                    Sphere.new( Vec3.new(-0.4, 1.5, -5), 0.1),
+                    Sphere.new( Vec3.new(-0.2, 1.5, -5), 0.1),
+                    Sphere.new( Vec3.new(0.0, 1.5, -5), 0.1),
+                    Sphere.new( Vec3.new(0.2, 1.5, -5), 0.1),
+                    Sphere.new( Vec3.new(0.4, 1.5, -5), 0.1),
+                    Sphere.new( Vec3.new(0.6, 1.5, -5), 0.1),
+                    Sphere.new( Vec3.new(0.8, 1.5, -5), 0.1),*/
+                ]
                 for(let i=0; i<teapot.faces.length; i++){
-                    let p1 = new Vec3(
-                        parseFloat(teapot.vertices[teapot.faces[i][0]][0])/5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][0]][1])/5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][0]][2])/5-7
+                    let p1 = Vec3.new(
+                        parseFloat(teapot.vertices[teapot.faces[i][0]][0])/3.5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][0]][1])/3.5-1, 
+                        parseFloat(teapot.vertices[teapot.faces[i][0]][2])/3.5-4
                     )
-                    let p2 = new Vec3(
-                        parseFloat(teapot.vertices[teapot.faces[i][1]][0])/5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][1]][1])/5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][1]][2])/5-7
+                    let p2 = Vec3.new(
+                        parseFloat(teapot.vertices[teapot.faces[i][1]][0])/3.5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][1]][1])/3.5-1, 
+                        parseFloat(teapot.vertices[teapot.faces[i][1]][2])/3.5-4
                     )
-                    let p3 = new Vec3(
-                        parseFloat(teapot.vertices[teapot.faces[i][2]][0])/5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][2]][1])/5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][2]][2])/5-7
+                    let p3 = Vec3.new(
+                        parseFloat(teapot.vertices[teapot.faces[i][2]][0])/3.5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][2]][1])/3.5-1, 
+                        parseFloat(teapot.vertices[teapot.faces[i][2]][2])/3.5-4
                     )
-                    obj.push(new Triangle(p1, p2, p3))
+                    obj.push(Triangle.new(p1, p2, p3))
                 }
-                console.log(obj)
 
-                let worker = new Worker("js/worker.js", { type: "module" })
-                worker.postMessage({
-                    width:  imageData.width,
-                    height: imageData.height,
-                    objs: global_objs,
-                    samples_per_pixel: params.samples_per_pixel,
-                    camera : camera
+                workers.forEach( w => {
+                    w.onmessage = onWorkerMessage(w)
+                    w.postMessage({msg:"init", objs:obj, camera:camera})
+                    let next = getNextChunk()
+                    if(next != null){
+                        w.postMessage(next)
+                    }
                 })
-
-                worker.onmessage = (e) => {
-                    let result = new ImageData(new Uint8ClampedArray(e.data), imageData.width, imageData.height)
-                    canvas.getContext("2d").putImageData(result, 0, 0)
-                    console.log("Finished !")
-                };
             })
+        }
+
+        function onWorkerMessage(w){
+            return e => {
+                let result = e.data
+                if(result.msg == "finished"){
+                    let imageData = new ImageData(result.imageData, result.width, result.height)
+                    canvas.getContext("2d").putImageData(imageData, result.posX, result.posY)
+                    let next = getNextChunk()
+                    if(next != null){
+                        w.postMessage(next)
+                    }
+                }else{
+                    document.global_params.pixels_computed += result.progress
+                    let nb_pixels = document.getElementById("canvas").width*document.getElementById("canvas").height
+                    let progress = 100*document.global_params.pixels_computed/nb_pixels
+                    document.getElementById("progress").innerHTML = progress.toFixed(2)+" %"
+                }
+            }
+        }
+
+        function getNextChunk(){
+            if(document.global_params.currentChunk === undefined){
+                document.global_params.currentChunk = 0
+            }
+
+            let chunk_size = document.global_params.chunk_size
+
+            let canvas_width  = document.getElementById("canvas").width
+            let canvas_height = document.getElementById("canvas").height
+            let nb_chunks_width  = canvas_width  / chunk_size
+            let nb_chunks_height = canvas_height / chunk_size
+            let indexX = document.global_params.currentChunk%nb_chunks_width
+            let indexY = Math.floor(document.global_params.currentChunk/nb_chunks_height)
+
+            let startX = indexX*chunk_size
+            let startY = indexY*chunk_size
+            let chunk_width  = Math.min(chunk_size, canvas_width  - startX)
+            let chunk_height = Math.min(chunk_size, canvas_height - startY)
+
+            if(chunk_height <= 0){
+                return null
+            }
+
+            document.global_params.currentChunk++
+            //console.log(`Start chunk (${indexX};${indexY}) at (${indexX*chunk_size};${indexY*chunk_size}) with width ${chunk_width}, height ${chunk_height}`)
+            return {
+                msg: "start",
+                img_width:  canvas_width,
+                img_height: canvas_height,
+                chunk_width:  chunk_width,
+                chunk_height: chunk_height,
+                startX: startX,
+                startY: startY,
+                samples_per_pixel: document.global_params.samples_per_pixel,
+            }
         }
     </script>  
 </html>
