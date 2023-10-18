@@ -15,6 +15,7 @@
                 <div class="center flex-column">
                     <div id="bottom_parameters"></div>
                     <button onclick="render()">Render</button>
+                    <p id="loading"></p>
                 </div>
             </div>
             <canvas id="canvas" width="800" height="800"></canvas>
@@ -30,17 +31,30 @@
             </ul>
         </div>
     </body>
-    <script src="js/primitives.js"></script>
+    <script src="js/ModelHelper.js"></script>
     <script type="module">
         import Slider from "./js/ui/slider.js"
         import Tabs from "./js/ui/tabs.js"
+        import Camera from "./js/camera.js"
+        import {Ray, Vec3} from "./js/primitives.js"
+        import {Sphere, Triangle} from "./js/objects.js"
         document.Slider = Slider
         document.Tabs   = Tabs
+        document.Camera = Camera
+        document.Ray = Ray
+        document.Vec3 = Vec3
+        document.Sphere = Sphere
+        document.Triangle = Triangle
     </script>
     <script>
         function init(){
             Slider = document.Slider
-            Tabs = document.Tabs
+            Tabs   = document.Tabs
+            Camera = document.Camera
+            Ray = document.Ray
+            Vec3 = document.Vec3
+            Sphere = document.Sphere
+            Triangle = document.Triangle
 
             document.global_params = {
                 samples_per_pixel: 5,
@@ -70,154 +84,17 @@
 
             new Slider("bottom_parameters", "Samples per pixel", 5,  val=>document.global_params.samples_per_pixel=val, 1, 50, 1, 0)
 
-            render()
-        }
+            global_objs = [
+                //new Sphere( new Vec3(0,0,-4), 1),
+                new Sphere( new Vec3(0,-21,-4), 20),
 
-        class Sphere{
-            constructor(center, radius){
-                this.center = center
-                this.radius = radius
-            }
+                new Sphere( new Vec3(1.5,  1.5, -5), 0.5),
+                new Sphere( new Vec3(-1.5, 1.5, -5), 0.5),
 
-            hit(ray){
-                let diff = ray.origin.sub(this.center)
-                let a = ray.direction.dot(ray.direction)
-                let b = 2*ray.direction.dot(diff)
-                let c = diff.dot(diff) - this.radius*this.radius
-                let discriminant = b*b - 4*a*c
-                if(discriminant >= 0){
-                    let t  = (-b-Math.sqrt(discriminant))/(2*a)
-                    return t > 0.0001 ? t : Infinity
-                }else{
-                    return Infinity
-                }
-            }
-
-            normalAt(position){
-                return position.sub(this.center).normalized()
-            }
-        }
-
-        class Camera{
-            constructor(aspect_ratio, fov, position){
-                this.viewport_width  = 1
-                this.viewport_height = 1/aspect_ratio
-                this.focal_length    = (this.viewport_width/2) / Math.tan(fov*(Math.PI/180)/2)
-                this.position        = position
-            }
-
-            getRay(u, v){
-                let direction = new Vec3( 
-                    u*this.viewport_width  - this.viewport_width/2, 
-                    -(v*this.viewport_height - this.viewport_height/2), 
-                    -this.focal_length
-                )
-                return new Ray( this.position, direction )
-            }
-        }
-
-        const sky_color = [200, 200, 255, 255]
-
-        let objs = [
-            new Sphere( new Vec3(0,0,-4), 1),
-            new Sphere( new Vec3(0,-21,-4), 20),
-
-            new Sphere( new Vec3(1.5,  1.5, -5), 0.5),
-            new Sphere( new Vec3(-1.5, 1.5, -5), 0.5),
-        ]
-
-        function perfectDiffuse(ray, t, obj){
-            let hit_point = ray.at(t)
-            let new_dir = Vec3.random_spheric()
-            let normal = obj.normalAt(hit_point)
-            ray.origin = hit_point
-            ray.direction = normal.dot(new_dir) >= 0 ? new_dir : new_dir.mul(-1)
-        }
-
-        function lambertianDiffuse(ray, t, obj){
-            let hit_point = ray.at(t)
-            let new_dir = Vec3.random_spheric().normalized()
-            let normal = obj.normalAt(hit_point)
-            ray.origin = hit_point
-            ray.direction = normal.add(new_dir)
-        }
-
-        function mirror(ray, t, obj){
-            let hit_point = ray.at(t)
-            let new_dir = Vec3.random_spheric().normalized()
-            let normal = obj.normalAt(hit_point)
-            ray.origin = hit_point
-            ray.direction = ray.direction.sub(normal.mul(2*ray.direction.dot(normal)))
-        }
-
-        function granular_mirror(ray, t, obj){
-            const granular_factor = 0.1
-            let hit_point = ray.at(t)
-            let new_dir = Vec3.random_spheric().normalized()
-            let normal = obj.normalAt(hit_point)
-            ray.origin = hit_point
-            ray.direction = ray.direction.sub(normal.mul(2*ray.direction.dot(normal))).add(Vec3.random_spheric().normalized().mul(granular_factor))
-        }
-
-        function refract(ray, t, obj){
-            let hit_point = ray.at(t)
-            let normal = obj.normalAt(hit_point)
-
-            let eta   = 1
-            let eta_p = 1.4
-
-            if(eta/eta_p * Math.sqrt(1-ray.direction.dot(normal)*ray.direction.dot(normal)) > 1){
-                mirror(ray, t, obj)
-            }else{
-                let perpendicular = ray.direction.add(normal.mul( ray.direction.mul(-1).dot(normal)) ).mul(eta/eta_p)
-                let parallel = normal.mul(-Math.sqrt(1-perpendicular.norm_squared()))
-
-                ray.origin = hit_point
-                ray.direction = perpendicular.add(parallel)
-            }
-        }
-
-        function gamma_correct(color){
-            return [
-                Math.sqrt(color[0]/255)*255,
-                Math.sqrt(color[1]/255)*255,
-                Math.sqrt(color[2]/255)*255,
-                color[3]
+                new Triangle( new Vec3(0.5,0.5,-5), new Vec3(-0.5,0.5,-2), new Vec3(0.5,-0.5,-2) )
             ]
-        }
 
-        function trace(ray, objs, max_iterations=50){
-            let color = [255, 255, 255, 255]
-            let multiplier = [0.5, 0.5, 0.5, 1]
-
-            for(let i=0; i<max_iterations; i++){
-                let obj_found = undefined
-                let t = Infinity
-
-                objs.forEach(obj => {
-                    let t_tmp = obj.hit(ray)
-                    if(t_tmp < t){
-                        t = t_tmp
-                        obj_found = obj
-                    }
-                })
-
-                if(t !== Infinity){
-                    lambertianDiffuse(ray, t, obj_found)
-
-                    color[0] *= multiplier[0]
-                    color[1] *= multiplier[1]
-                    color[2] *= multiplier[2]
-                    color[3] *= multiplier[3]
-                }else{
-                    color[0] *= sky_color[0]/255
-                    color[1] *= sky_color[1]/255
-                    color[2] *= sky_color[2]/255
-                    color[3] *= sky_color[3]/255
-                    break
-                }
-            }
-            return gamma_correct(color)
+            //render()
         }
  
         function render(){
@@ -228,33 +105,47 @@
 
             const camera = new Camera(canvas.width/canvas.height, params.camera.fov, new Vec3(params.camera.x, params.camera.y, params.camera.z))
 
-            for(let y=0; y<imageData.height; y++){
-                for(let x=0; x<imageData.width; x++){
-                    const index = x*4 + y*4*imageData.width
 
-                    let final_color = [0,0,0,0]
+            ModelHelper.loadWavefront("teapot/teapot_simple.obj").then( teapot => {
 
-                    for(let sample=0; sample < params.samples_per_pixel; sample++){
-                        let color = [0,0,0,0]
-                        let dx = Math.random()
-                        let dy = Math.random()
-                        let ray = camera.getRay( (x+dx)/canvas.width, (y+dy)/canvas.height)
+                console.log(teapot)
 
-                        color = trace(ray, objs)
-
-                        final_color[0] += color[0]/params.samples_per_pixel
-                        final_color[1] += color[1]/params.samples_per_pixel
-                        final_color[2] += color[2]/params.samples_per_pixel
-                        final_color[3] += color[3]/params.samples_per_pixel
-                    }
-
-                    imageData.data[index]   = final_color[0]
-                    imageData.data[index+1] = final_color[1]
-                    imageData.data[index+2] = final_color[2]
-                    imageData.data[index+3] = final_color[3]
+                let obj = []
+                for(let i=0; i<teapot.faces.length; i++){
+                    let p1 = new Vec3(
+                        parseFloat(teapot.vertices[teapot.faces[i][0]][0])/5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][0]][1])/5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][0]][2])/5-7
+                    )
+                    let p2 = new Vec3(
+                        parseFloat(teapot.vertices[teapot.faces[i][1]][0])/5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][1]][1])/5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][1]][2])/5-7
+                    )
+                    let p3 = new Vec3(
+                        parseFloat(teapot.vertices[teapot.faces[i][2]][0])/5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][2]][1])/5, 
+                        parseFloat(teapot.vertices[teapot.faces[i][2]][2])/5-7
+                    )
+                    obj.push(new Triangle(p1, p2, p3))
                 }
-            }
-            canvas.getContext("2d").putImageData(imageData, 0, 0)
+                console.log(obj)
+
+                let worker = new Worker("js/worker.js", { type: "module" })
+                worker.postMessage({
+                    width:  imageData.width,
+                    height: imageData.height,
+                    objs: global_objs,
+                    samples_per_pixel: params.samples_per_pixel,
+                    camera : camera
+                })
+
+                worker.onmessage = (e) => {
+                    let result = new ImageData(new Uint8ClampedArray(e.data), imageData.width, imageData.height)
+                    canvas.getContext("2d").putImageData(result, 0, 0)
+                    console.log("Finished !")
+                };
+            })
         }
     </script>  
 </html>

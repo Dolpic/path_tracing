@@ -1,4 +1,4 @@
-class Ray {
+export class Ray {
     constructor(origin, direction){
         this.origin = origin
         this.direction = direction
@@ -9,7 +9,7 @@ class Ray {
     }
 }
 
-class Vec3 {
+export class Vec3 {
     constructor(x,y,z){
         this.x = x
         this.y = y
