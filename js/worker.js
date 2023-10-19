@@ -1,7 +1,7 @@
 import Camera from "./camera.js"
 import { lambertianDiffuse } from "./materials.js";
-import { Color } from "./primitives.js";
-import Timer from "./performance.js";
+import { Bbox, Color } from "./primitives.js";
+import Timer from "./Timer.js";
 import { Sphere, Triangle } from "./objects.js";
 
 onmessage = e => {
@@ -13,6 +13,90 @@ onmessage = e => {
             postMessage(render(e.data))
             break
     }
+}
+
+function computeBVH(objs){
+    let bbox = Bbox.new()
+    Bbox.getEnglobing(bbox, objs)
+
+    if(objs.length < 2){
+        return {
+            is_leaf: true,
+            objs: objs,
+            bbox: bbox
+        }
+    }
+    
+    let centersBbox = Bbox.new()
+    Bbox.getEnglobingCenters(centersBbox, objs)
+
+    let minAxis
+    let maxAxis 
+    let splitValue
+    let lengthX = Math.abs(centersBbox.maxX - centersBbox.minX)
+    let lengthY = Math.abs(centersBbox.maxY - centersBbox.minY)
+    let lengthZ = Math.abs(centersBbox.maxZ - centersBbox.minZ)
+    let max = Math.max(lengthX, lengthY, lengthZ)
+    if(max == 0){
+        return {
+            is_leaf: true,
+            objs: objs,
+            bbox: bbox
+        }
+    }
+    if(max == lengthX){
+        minAxis = "minX"
+        maxAxis = "maxX"
+        splitValue = (centersBbox.maxX + centersBbox.minX)/2
+    }else if(max ==lengthY){
+        minAxis = "minY"
+        maxAxis = "maxY"
+        splitValue = (centersBbox.maxY + centersBbox.minY)/2
+    }else{
+        minAxis = "minZ"
+        maxAxis = "maxZ"
+        splitValue = (centersBbox.maxZ + centersBbox.minZ)/2
+    }
+
+    let leftObjs  = []
+    let rightObjs = []
+    objs.forEach(obj => {
+        if(obj.bbox[minAxis] <= splitValue){
+            leftObjs.push(obj)
+        }else{
+            rightObjs.push(obj)
+        }
+    })
+
+    if(leftObjs.length == 0 || rightObjs.length == 0){
+        return {
+            is_leaf: true,
+            objs: leftObjs.length == 0 ? rightObjs : leftObjs,
+            bbox: bbox
+        }
+    }
+
+    return {
+        is_leaf: false,
+        left:    computeBVH(leftObjs),
+        right:   computeBVH(rightObjs),
+        bbox:    bbox
+    }
+}
+
+function gatherFromBVH(ray, bvh){
+    let result = []
+
+    if(Bbox.hitRay(bvh.bbox, ray)){
+        if(bvh.is_leaf){
+            result = result.concat(bvh.objs)
+        }else{
+            result = result.concat(gatherFromBVH(ray, bvh.left))
+            result = result.concat(gatherFromBVH(ray, bvh.right)) 
+        }
+    }
+
+    return result
 }
 
 function init(objs, camera){
@@ -29,6 +113,9 @@ function init(objs, camera){
                 console.error(`Unknown object : ${obj}`)
         }
     })
+
+    self.bvh = computeBVH(self.objs)
+
     self.camera = camera
 
     self.sky_color     = Color.new(0.8, 0.8, 1, 1)
@@ -96,7 +183,7 @@ function render(params){
     }
 }
 
-function trace(ray, objs, max_iterations=25){
+function trace(ray, objs, max_iterations=25, with_bvh=true){
     let has_hit = false
     Color.equal(self.current_color, self.initial_color)
 
@@ -106,13 +193,28 @@ function trace(ray, objs, max_iterations=25){
 
         let t = Infinity
         let obj_found
-        objs.forEach(obj => {
-            let t_tmp = obj.hit(ray)
-            if(t_tmp < t){
-                t = t_tmp
-                obj_found = obj
-            }
-        })
+
+        if(with_bvh){
+            let considered_objs = gatherFromBVH(ray, self.bvh)
+            //console.log(considered_objs)
+            considered_objs.forEach(obj => {
+                const t_tmp = obj.hit(ray)
+                if(t_tmp < t){
+                    t = t_tmp
+                    obj_found = obj
+                }
+            })
+        }else{
+            objs.forEach(obj => {
+                const t_tmp = obj.hit(ray)
+                if(t_tmp < t){
+                    t = t_tmp
+                    obj_found = obj
+                }
+            })
+        }
+
+      
 
         //self.timer.step()
 

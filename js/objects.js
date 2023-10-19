@@ -1,14 +1,22 @@
-import { Vec3 } from "./primitives.js"
+import { Bbox, Vec3 } from "./primitives.js"
 
 export class Sphere{
     constructor(center, radius){
         this.name = "Sphere"
         this.center = center
         this.radius = radius
+        this.bbox = Bbox.new( 
+            Vec3.subScalar(Vec3.clone(center), this.radius), 
+            Vec3.addScalar(Vec3.clone(center), this.radius)
+        )
     }
 
     static unSerialize(sphere){
         return new Sphere(sphere.center, sphere.radius)
+    }
+
+    getBbox(){
+        return this.bbox
     }
 
     hit(ray){
@@ -46,30 +54,61 @@ export class Triangle{
         Vec3.cross(this.n23, this.normal)
         Vec3.cross(this.n31, this.normal)
         this.d = - (this.normal.x*this.p1.x + this.normal.y*this.p1.y + this.normal.z*this.p1.z)
+
+        this.d1 = Vec3.new(0,0,0)
+        this.d2 = Vec3.new(0,0,0)
+        this.d3 = Vec3.new(0,0,0)
+        this.p  = Vec3.new(0,0,0)
+
+        this.bbox = Bbox.fromMinMax( 
+            Bbox.new(),
+            Math.min(this.p1.x, this.p2.x, this.p3.x),
+            Math.max(this.p1.x, this.p2.x, this.p3.x),
+            Math.min(this.p1.y, this.p2.y, this.p3.y),
+            Math.max(this.p1.y, this.p2.y, this.p3.y),
+            Math.min(this.p1.z, this.p2.z, this.p3.z),
+            Math.max(this.p1.z, this.p2.z, this.p3.z),
+        )
     }
 
     static unSerialize(triangle){
         return new Triangle(triangle.p1, triangle.p2, triangle.p3)
     }
 
+    getBbox(){
+        return this.bbox
+    }
+
     hit(ray){
-        let t = -(Vec3.dot(this.normal, ray.origin) + this.d) / Vec3.dot(this.normal, ray.direction)
-        let p = Vec3.clone(ray.direction)
-        Vec3.mul(p, t)
-        Vec3.add(p, ray.origin)
-
-        let d1 = Vec3.sub( Vec3.clone(p), this.p1)
-        let d2 = Vec3.sub( Vec3.clone(p), this.p2)
-        let d3 = Vec3.sub( Vec3.clone(p), this.p3)
-        let sign1 = Vec3.dot( d1, this.n12)
-        let sign2 = Vec3.dot( d2, this.n23)
-        let sign3 = Vec3.dot( d3, this.n31)
-
-        if( (sign1 < 0 && sign2 < 0 && sign3 < 0) || (sign1 > 0 && sign2 > 0 && sign3 > 0)){
-            return t > 0.0001 ? t : Infinity
-        }else{
+        const denominator = Vec3.dot(this.normal, ray.direction)
+        if(denominator == 0){
             return Infinity
         }
+
+        const t = -(Vec3.dot(this.normal, ray.origin) + this.d) / denominator
+        if(t < 0.001){
+            return Infinity
+        }
+
+        Vec3.add(Vec3.mul(Vec3.equal(this.p, ray.direction), t), ray.origin)
+
+        if( Vec3.dot( Vec3.sub(Vec3.equal(this.d1, this.p), this.p1), this.n12) > 0 ||
+            Vec3.dot( Vec3.sub(Vec3.equal(this.d2, this.p), this.p2), this.n23) > 0 ||
+            Vec3.dot( Vec3.sub(Vec3.equal(this.d3, this.p), this.p3), this.n31) > 0){
+            return Infinity
+        }
+        return t
+    }
+
+    normalAt(position){
+        let p2 = Vec3.clone(this.p2)
+        let p3 = Vec3.clone(this.p3)
+        Vec3.sub(p2, this.p1)
+        Vec3.sub(p3, this.p1)
+        Vec3.cross(p2, p3)
+        return Vec3.normalize(p2)
+    }
+}
 
         /*let p1 = Vec3.clone(this.p1)
         let p2 = Vec3.clone(this.p2)
@@ -129,14 +168,3 @@ export class Triangle{
         }
 
         return tScaled / det*/
-    }
-
-    normalAt(position){
-        let p2 = Vec3.clone(this.p2)
-        let p3 = Vec3.clone(this.p3)
-        Vec3.sub(p2, this.p1)
-        Vec3.sub(p3, this.p1)
-        Vec3.cross(p2, p3)
-        return Vec3.normalize(p2)
-    }
-}

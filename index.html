@@ -14,7 +14,6 @@
                 <hr>
                 <div class="center flex-column">
                     <div id="bottom_parameters"></div>
-                    <span>Note : For now the renderer is unoptimized. Rendering takes time.</span>
                     <button onclick="render()">Render</button>
                     <p id="progress"></p>
                 </div>
@@ -24,11 +23,12 @@
         <hr>
         <div class="explanations">
             <p>This is a very simple path tracer implemented purely in javascript.</p>
-            <p>For now it is very limited and not optimized. Numerous new features are planned. For now it has the following features : </p>
+            <p>For now it is very limited and not well optimized. Numerous new features are planned. For now it has the following features : </p>
             <ul>
                 <li>Handles spheres and triangle rendering, with the feature to load any triangulated mesh</li>
                 <li>User-defined number of samples per pixels (for now the samples in each pixel have random position)</li>
                 <li>Camera with modifiable position and FOV</li>
+                <li>Usage of a <a href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">Bounding Volume Hierarchie</a> to improve the performance</li>
             </ul>
         </div>
     </body>
@@ -85,7 +85,7 @@
             new Slider("camera_position", "Y", 0,  val=>document.global_params.camera.y=val, -20, 20, 1)
             new Slider("camera_position", "Z", 0,  val=>document.global_params.camera.z=val, -20, 20)
             new Slider("camera_others", "Field of view", 45, val=>document.global_params.camera.fov=val, 5, 170)
-            new Slider("bottom_parameters", "Samples per pixel", 10,  val=>document.global_params.samples_per_pixel=val, 1, 50, 1, 0)
+            new Slider("bottom_parameters", "Samples per pixel", 20,  val=>document.global_params.samples_per_pixel=val, 1, 50, 1, 0)
 
             global_objs = [
                     new Sphere( Vec3.new(0,-21,-4), 20),
@@ -124,9 +124,9 @@
             ModelHelper.loadWavefront("teapot/teapot_very_simple.obj").then( teapot => {
 
                 let obj = [
-                    new Sphere( Vec3.new(0,-21,-4), 20),
-                    new Sphere( Vec3.new(1.2,  1.2, -5), 0.5),
-                    new Sphere( Vec3.new(-1, 1.2, -5), 0.5),
+                    new Sphere( Vec3.new(0,   -20.98, -4), 20),
+                    new Sphere( Vec3.new(1.2, 1.2, -5), 0.5),
+                    new Sphere( Vec3.new(-1,  1.2, -5), 0.5),
                     //new Triangle( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
 
                     /*new Sphere( Vec3.new(-0.8, 1.5, -5), 0.1),
