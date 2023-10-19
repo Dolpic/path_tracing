@@ -1,8 +1,8 @@
 import Camera from "./camera.js"
-import { hitDispatch } from "./objects.js";
 import { lambertianDiffuse } from "./materials.js";
 import { Color } from "./primitives.js";
 import Timer from "./performance.js";
+import { Sphere, Triangle } from "./objects.js";
 
 onmessage = e => {
     switch(e.data.msg){
@@ -16,8 +16,19 @@ onmessage = e => {
 }
 
 function init(objs, camera){
-    // TODO Remove the dispatch function and assign the Object prototypes here
-    self.objs = objs
+    self.objs = []
+    objs.forEach(obj => {
+        switch(obj.name){
+            case "Sphere":
+                self.objs.push(Sphere.unSerialize(obj))
+                break
+            case "Triangle":
+                self.objs.push(Triangle.unSerialize(obj))
+                break
+            default:
+                console.error(`Unknown object : ${obj}`)
+        }
+    })
     self.camera = camera
 
     self.sky_color     = Color.new(0.8, 0.8, 1, 1)
@@ -85,7 +96,7 @@ function render(params){
     }
 }
 
-function trace(ray, objs, max_iterations=15){
+function trace(ray, objs, max_iterations=25){
     let has_hit = false
     Color.equal(self.current_color, self.initial_color)
 
@@ -93,11 +104,10 @@ function trace(ray, objs, max_iterations=15){
 
         //self.timer.start()
 
-        let obj_found = undefined
         let t = Infinity
-        
+        let obj_found
         objs.forEach(obj => {
-            let t_tmp = hitDispatch(obj, ray)
+            let t_tmp = obj.hit(ray)
             if(t_tmp < t){
                 t = t_tmp
                 obj_found = obj

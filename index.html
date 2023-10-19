@@ -85,25 +85,27 @@
             new Slider("camera_position", "Y", 0,  val=>document.global_params.camera.y=val, -20, 20, 1)
             new Slider("camera_position", "Z", 0,  val=>document.global_params.camera.z=val, -20, 20)
             new Slider("camera_others", "Field of view", 45, val=>document.global_params.camera.fov=val, 5, 170)
-            new Slider("bottom_parameters", "Samples per pixel", 5,  val=>document.global_params.samples_per_pixel=val, 1, 50, 1, 0)
+            new Slider("bottom_parameters", "Samples per pixel", 10,  val=>document.global_params.samples_per_pixel=val, 1, 50, 1, 0)
 
             global_objs = [
-                //new Sphere( new Vec3(0,0,-4), 1),
-                Sphere.new( Vec3.new(0,-21,-4), 20),
-                Sphere.new( Vec3.new(1.5,  1.5, -5), 0.5),
-                Sphere.new( Vec3.new(-1.5, 1.5, -5), 0.5),
-                Triangle.new( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
+                    new Sphere( Vec3.new(0,-21,-4), 20),
+                    new Sphere( Vec3.new(1.2,  1.2, -5), 0.5),
+                    new Sphere( Vec3.new(-1, 1.2, -5), 0.5),
+                    new Triangle( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
 
-                Sphere.new( Vec3.new(-0.8, 1.5, -5), 0.1),
-                Sphere.new( Vec3.new(-0.6, 1.5, -5), 0.1),
-                Sphere.new( Vec3.new(-0.4, 1.5, -5), 0.1),
-                Sphere.new( Vec3.new(-0.2, 1.5, -5), 0.1),
-                Sphere.new( Vec3.new(0.0, 1.5, -5), 0.1),
-                Sphere.new( Vec3.new(0.2, 1.5, -5), 0.1),
-                Sphere.new( Vec3.new(0.4, 1.5, -5), 0.1),
-                Sphere.new( Vec3.new(0.6, 1.5, -5), 0.1),
-                Sphere.new( Vec3.new(0.8, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(-0.8, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(-0.6, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(-0.4, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(-0.2, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.0, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.2, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.4, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.6, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.8, 1.5, -5), 0.1),
             ]
+
+            //g_t = new Triangle( Vec3.new(1,2,3), Vec3.new(2,3,4), Vec3.new(3,5,2) )
+            //g_t.hit( Ray.new( Vec3.new(0.7,0.7,5), Vec3.new(0,0,-1) )  )
         }
  
         function render(){
@@ -122,20 +124,20 @@
             ModelHelper.loadWavefront("teapot/teapot_very_simple.obj").then( teapot => {
 
                 let obj = [
-                    Sphere.new( Vec3.new(0,-21,-4), 20),
-                    Sphere.new( Vec3.new(1.2,  1.2, -5), 0.5),
-                    Sphere.new( Vec3.new(-1, 1.2, -5), 0.5),
-                    //Triangle.new( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
+                    new Sphere( Vec3.new(0,-21,-4), 20),
+                    new Sphere( Vec3.new(1.2,  1.2, -5), 0.5),
+                    new Sphere( Vec3.new(-1, 1.2, -5), 0.5),
+                    //new Triangle( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
 
-                    /*Sphere.new( Vec3.new(-0.8, 1.5, -5), 0.1),
-                    Sphere.new( Vec3.new(-0.6, 1.5, -5), 0.1),
-                    Sphere.new( Vec3.new(-0.4, 1.5, -5), 0.1),
-                    Sphere.new( Vec3.new(-0.2, 1.5, -5), 0.1),
-                    Sphere.new( Vec3.new(0.0, 1.5, -5), 0.1),
-                    Sphere.new( Vec3.new(0.2, 1.5, -5), 0.1),
-                    Sphere.new( Vec3.new(0.4, 1.5, -5), 0.1),
-                    Sphere.new( Vec3.new(0.6, 1.5, -5), 0.1),
-                    Sphere.new( Vec3.new(0.8, 1.5, -5), 0.1),*/
+                    /*new Sphere( Vec3.new(-0.8, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(-0.6, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(-0.4, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(-0.2, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.0, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.2, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.4, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.6, 1.5, -5), 0.1),
+                    new Sphere( Vec3.new(0.8, 1.5, -5), 0.1),*/
                 ]
                 for(let i=0; i<teapot.faces.length; i++){
                     let p1 = Vec3.new(
@@ -153,7 +155,7 @@
                         parseFloat(teapot.vertices[teapot.faces[i][2]][1])/3.5-1, 
                         parseFloat(teapot.vertices[teapot.faces[i][2]][2])/3.5-4
                     )
-                    obj.push(Triangle.new(p1, p2, p3))
+                    obj.push(new Triangle(p1, p2, p3))
                 }
 
                 workers.forEach( w => {

@@ -1,35 +1,34 @@
 import { Vec3, Ray } from "./primitives.js"
-import { normalAtDispatch } from "./objects.js"
 
 export function perfectDiffuse(ray, t, obj){
     Ray.moveAt(ray, t)
     let new_dir = Vec3.random_spheric()
-    let normal = normalAtDispatch(obj, ray.origin)
+    let normal = obj.normalAt(ray.origin)
     ray.direction = Vec3.dot(normal, new_dir) < 0 ? new_dir : Vec3.mul(new_dir, -1)
 }
 
 export function lambertianDiffuse(ray, t, obj){
     Ray.moveAt(ray, t)
-    let normal = normalAtDispatch(obj, ray.origin)
+    let normal = obj.normalAt(ray.origin)
     ray.direction = Vec3.add(normal, Vec3.normalize( Vec3.random_spheric(ray.direction) ))
 }
 
 export function mirror(ray, t, obj){
     Ray.moveAt(ray, t)
-    let normal = normalAtDispatch(obj, ray.origin)
+    let normal = obj.normalAt(ray.origin)
     Vec3.sub(ray.direction, Vec3.mul(normal, 2*Vec3.dot(ray.direction,normal) ) )
 }
 
 export function granular_mirror(ray, t, obj, granular_factor = 0.1){
     Ray.moveAt(ray, t)
-    let normal = normalAtDispatch(obj, ray.origin)
+    let normal = obj.normalAt(ray.origin)
     let reflectJiggle = Vec3.mul( Vec3.normalize(Vec3.random_spheric()), granular_factor) 
     let reflectDir = Vec3.mul(normal, 2*Vec3.dot(ray.direction, normal) )
     Vec3.sub(ray.direction, Vec3.add(reflectDir, reflectJiggle ))
 }
 
 export function refract(ray, t, obj, eta_from=1, eta_to=1){
-    let normal = normalAtDispatch(obj, ray.origin) // Wrong !
+    let normal = obj.normalAt(ray.origin) // Wrong !
     let dot = Vec3.dot(ray.direction, normal)
     let eta_ratio = eta_from/eta_to
 

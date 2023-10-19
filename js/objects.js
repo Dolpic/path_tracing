@@ -1,39 +1,21 @@
 import { Vec3 } from "./primitives.js"
 
-export function hitDispatch(obj, ray){
-    switch(obj.name){
-        case "Sphere":
-            return Sphere.hit(obj, ray)
-        case "Triangle":
-            return Triangle.hit(obj, ray)
-        default:
-            console.error(`Unknown object : ${obj}`)
-    }
-}
-
-export function normalAtDispatch(obj, position){
-    switch(obj.name){
-        case "Sphere":
-            return Sphere.normalAt(obj, position)
-        case "Triangle":
-            return Triangle.normalAt(obj, position)
-        default :
-            console.error(`Unknown object : ${obj}`)
-    }
-}
-
 export class Sphere{
-    constructor(){console.error("Sphere has no constructor !")}
-
-    static new(center, radius){
-        return {name:"Sphere", center:center, radius:radius}
+    constructor(center, radius){
+        this.name = "Sphere"
+        this.center = center
+        this.radius = radius
     }
 
-    static hit(self, ray){
-        const diff = Vec3.sub( Vec3.clone(ray.origin), self.center)
+    static unSerialize(sphere){
+        return new Sphere(sphere.center, sphere.radius)
+    }
+
+    hit(ray){
+        const diff = Vec3.sub( Vec3.clone(ray.origin), this.center)
         const a = Vec3.dot(ray.direction, ray.direction)
         const b = 2*Vec3.dot(ray.direction, diff)
-        const c = Vec3.dot(diff, diff) - self.radius*self.radius
+        const c = Vec3.dot(diff, diff) - this.radius*this.radius
         const discriminant = b*b - 4*a*c
         if(discriminant >= 0){
             const t = (-b-Math.sqrt(discriminant))/(2*a)
@@ -43,22 +25,55 @@ export class Sphere{
         }
     }
 
-    static normalAt(self, position){
-        return Vec3.normalize(Vec3.sub(Vec3.clone(position), self.center))
+    normalAt(position){
+        return Vec3.normalize(Vec3.sub(Vec3.clone(position), this.center))
     }
 }
 
 export class Triangle{
-    constructor(){console.error("Triangle has no constructor !")}
+    constructor(p1, p2, p3){
+        this.name = "Triangle"
+        this.p1 = p1
+        this.p2 = p2
+        this.p3 = p3
 
-    static new(p1, p2, p3){
-        return {name:"Triangle", p1:p1, p2:p2, p3:p3}
+        this.n12 = Vec3.sub( Vec3.clone(this.p2), this.p1)
+        this.n23 = Vec3.sub( Vec3.clone(this.p3), this.p2)
+        this.n31 = Vec3.sub( Vec3.clone(this.p1), this.p3)
+        this.normal = Vec3.cross( Vec3.clone(this.n12), this.n23)
+
+        Vec3.cross(this.n12, this.normal)
+        Vec3.cross(this.n23, this.normal)
+        Vec3.cross(this.n31, this.normal)
+        this.d = - (this.normal.x*this.p1.x + this.normal.y*this.p1.y + this.normal.z*this.p1.z)
     }
 
-    static hit(self, ray){
-        let p1 = Vec3.clone(self.p1)
-        let p2 = Vec3.clone(self.p2)
-        let p3 = Vec3.clone(self.p3)
+    static unSerialize(triangle){
+        return new Triangle(triangle.p1, triangle.p2, triangle.p3)
+    }
+
+    hit(ray){
+        let t = -(Vec3.dot(this.normal, ray.origin) + this.d) / Vec3.dot(this.normal, ray.direction)
+        let p = Vec3.clone(ray.direction)
+        Vec3.mul(p, t)
+        Vec3.add(p, ray.origin)
+
+        let d1 = Vec3.sub( Vec3.clone(p), this.p1)
+        let d2 = Vec3.sub( Vec3.clone(p), this.p2)
+        let d3 = Vec3.sub( Vec3.clone(p), this.p3)
+        let sign1 = Vec3.dot( d1, this.n12)
+        let sign2 = Vec3.dot( d2, this.n23)
+        let sign3 = Vec3.dot( d3, this.n31)
+
+        if( (sign1 < 0 && sign2 < 0 && sign3 < 0) || (sign1 > 0 && sign2 > 0 && sign3 > 0)){
+            return t > 0.0001 ? t : Infinity
+        }else{
+            return Infinity
+        }
+
+        /*let p1 = Vec3.clone(this.p1)
+        let p2 = Vec3.clone(this.p2)
+        let p3 = Vec3.clone(this.p3)
         // Translate
         Vec3.sub(p1, ray.origin)
         Vec3.sub(p2, ray.origin)
@@ -113,14 +128,14 @@ export class Triangle{
             return Infinity
         }
 
-        return tScaled / det
+        return tScaled / det*/
     }
 
-    static normalAt(self, position){
-        let p2 = Vec3.clone(self.p2)
-        let p3 = Vec3.clone(self.p3)
-        Vec3.sub(p2, self.p1)
-        Vec3.sub(p3, self.p1)
+    normalAt(position){
+        let p2 = Vec3.clone(this.p2)
+        let p3 = Vec3.clone(this.p3)
+        Vec3.sub(p2, this.p1)
+        Vec3.sub(p3, this.p1)
         Vec3.cross(p2, p3)
         return Vec3.normalize(p2)
     }
