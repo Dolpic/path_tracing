@@ -1,8 +1,9 @@
 import Camera from "./camera.js"
 import { lambertianDiffuse } from "./materials.js";
-import { Bbox, Color } from "./primitives.js";
+import { Color } from "./primitives.js";
 import Timer from "./Timer.js";
 import { Sphere, Triangle } from "./objects.js";
+import { computeBVH, gatherFromBVH } from "./BVH.js";
 
 onmessage = e => {
     switch(e.data.msg){
@@ -15,93 +16,10 @@ onmessage = e => {
     }
 }
 
-function computeBVH(objs){
-    let bbox = Bbox.new()
-    Bbox.getEnglobing(bbox, objs)
-
-    if(objs.length < 2){
-        return {
-            is_leaf: true,
-            objs: objs,
-            bbox: bbox
-        }
-    }
-    
-    let centersBbox = Bbox.new()
-    Bbox.getEnglobingCenters(centersBbox, objs)
-
-    let minAxis
-    let maxAxis 
-    let splitValue
-    let lengthX = Math.abs(centersBbox.maxX - centersBbox.minX)
-    let lengthY = Math.abs(centersBbox.maxY - centersBbox.minY)
-    let lengthZ = Math.abs(centersBbox.maxZ - centersBbox.minZ)
-    let max = Math.max(lengthX, lengthY, lengthZ)
-    if(max == 0){
-        return {
-            is_leaf: true,
-            objs: objs,
-            bbox: bbox
-        }
-    }
-    if(max == lengthX){
-        minAxis = "minX"
-        maxAxis = "maxX"
-        splitValue = (centersBbox.maxX + centersBbox.minX)/2
-    }else if(max ==lengthY){
-        minAxis = "minY"
-        maxAxis = "maxY"
-        splitValue = (centersBbox.maxY + centersBbox.minY)/2
-    }else{
-        minAxis = "minZ"
-        maxAxis = "maxZ"
-        splitValue = (centersBbox.maxZ + centersBbox.minZ)/2
-    }
-
-    let leftObjs  = []
-    let rightObjs = []
-    objs.forEach(obj => {
-        if(obj.bbox[minAxis] <= splitValue){
-            leftObjs.push(obj)
-        }else{
-            rightObjs.push(obj)
-        }
-    })
-
-    if(leftObjs.length == 0 || rightObjs.length == 0){
-        return {
-            is_leaf: true,
-            objs: leftObjs.length == 0 ? rightObjs : leftObjs,
-            bbox: bbox
-        }
-    }
-
-    return {
-        is_leaf: false,
-        left:    computeBVH(leftObjs),
-        right:   computeBVH(rightObjs),
-        bbox:    bbox
-    }
-}
-
-function gatherFromBVH(ray, bvh){
-    let result = []
-
-    if(Bbox.hitRay(bvh.bbox, ray)){
-        if(bvh.is_leaf){
-            result = result.concat(bvh.objs)
-        }else{
-            result = result.concat(gatherFromBVH(ray, bvh.left))
-            result = result.concat(gatherFromBVH(ray, bvh.right)) 
-        }
-    }
-
-    return result
-}
-
 function init(objs, camera){
     self.objs = []
-    objs.forEach(obj => {
+    for(let i=0; i<objs.length; i++){
+        const obj = objs[i]
         switch(obj.name){
             case "Sphere":
                 self.objs.push(Sphere.unSerialize(obj))
@@ -112,7 +30,7 @@ function init(objs, camera){
             default:
                 console.error(`Unknown object : ${obj}`)
         }
-    })
+    }
 
     self.bvh = computeBVH(self.objs)
 
@@ -147,7 +65,7 @@ function render(params){
                 const dx = Math.random()
                 const dy = Math.random()
                 const ray = Camera.getRay(self.camera, (x+dx)/img_width, (y+dy)/img_height)
-                const result = trace(ray, self.objs)
+                const result = trace(ray)
                 if(!result.has_hit){
                     Color.add(final_color, result.color)
                     break
@@ -170,7 +88,7 @@ function render(params){
         }
     }
 
-    //timer.result()
+    timer.result()
     
     postMessage({msg:"progress", progress:chunk_width*chunk_height-previous_index/4})
     return {
@@ -183,38 +101,29 @@ function render(params){
     }
 }
 
-function trace(ray, objs, max_iterations=25, with_bvh=true){
+function trace(ray, max_iterations=25){
     let has_hit = false
     Color.equal(self.current_color, self.initial_color)
 
     for(let i=0; i<max_iterations; i++){
 
-        //self.timer.start()
-
         let t = Infinity
         let obj_found
 
-        if(with_bvh){
-            let considered_objs = gatherFromBVH(ray, self.bvh)
-            //console.log(considered_objs)
-            considered_objs.forEach(obj => {
-                const t_tmp = obj.hit(ray)
-                if(t_tmp < t){
-                    t = t_tmp
-                    obj_found = obj
-                }
-            })
-        }else{
-            objs.forEach(obj => {
-                const t_tmp = obj.hit(ray)
-                if(t_tmp < t){
-                    t = t_tmp
-                    obj_found = obj
-                }
-            })
-        }
+        //self.timer.start()
+        
+        const considered_objs = gatherFromBVH(ray, self.bvh, self.timer)
 
-      
+        //self.timer.step()
+
+        for(let i=0; i<considered_objs.length; i++){
+            const cur_obj = considered_objs[i]
+            const t_tmp = cur_obj.hit(ray)
+            if(t_tmp < t){
+                t = t_tmp
+                obj_found = cur_obj
+            }
+        }
 
         //self.timer.step()
 

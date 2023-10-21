@@ -86,35 +86,16 @@
             new Slider("camera_position", "Z", 0,  val=>document.global_params.camera.z=val, -20, 20)
             new Slider("camera_others", "Field of view", 45, val=>document.global_params.camera.fov=val, 5, 170)
             new Slider("bottom_parameters", "Samples per pixel", 20,  val=>document.global_params.samples_per_pixel=val, 1, 50, 1, 0)
-
-            global_objs = [
-                    new Sphere( Vec3.new(0,-21,-4), 20),
-                    new Sphere( Vec3.new(1.2,  1.2, -5), 0.5),
-                    new Sphere( Vec3.new(-1, 1.2, -5), 0.5),
-                    new Triangle( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
-
-                    new Sphere( Vec3.new(-0.8, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(-0.6, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(-0.4, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(-0.2, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.0, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.2, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.4, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.6, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.8, 1.5, -5), 0.1),
-            ]
-
-            //g_t = new Triangle( Vec3.new(1,2,3), Vec3.new(2,3,4), Vec3.new(3,5,2) )
-            //g_t.hit( Ray.new( Vec3.new(0.7,0.7,5), Vec3.new(0,0,-1) )  )
         }
  
         function render(){
-            const canvas    = document.getElementById("canvas")
-            const imageData = canvas.getContext("2d").createImageData(canvas.width, canvas.height)
-
             const params = document.global_params
-
+            const canvas    = document.getElementById("canvas")
+            const ctx       = canvas.getContext("2d")
+            const imageData = ctx.createImageData(canvas.width, canvas.height)
             const camera = new Camera(canvas.width/canvas.height, params.camera.fov, Vec3.new(params.camera.x, params.camera.y, params.camera.z))
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
 
             let workers = []
             for(let i=0; i<params.nb_workers; i++){
@@ -171,18 +152,18 @@
 
         function onWorkerMessage(w){
             return e => {
-                let result = e.data
+                const result = e.data
                 if(result.msg == "finished"){
-                    let imageData = new ImageData(result.imageData, result.width, result.height)
+                    const imageData = new ImageData(result.imageData, result.width, result.height)
                     canvas.getContext("2d").putImageData(imageData, result.posX, result.posY)
-                    let next = getNextChunk()
+                    const next = getNextChunk()
                     if(next != null){
                         w.postMessage(next)
                     }
                 }else{
                     document.global_params.pixels_computed += result.progress
-                    let nb_pixels = document.getElementById("canvas").width*document.getElementById("canvas").height
-                    let progress = 100*document.global_params.pixels_computed/nb_pixels
+                    const nb_pixels = document.getElementById("canvas").width*document.getElementById("canvas").height
+                    const progress = 100*document.global_params.pixels_computed/nb_pixels
                     document.getElementById("progress").innerHTML = progress.toFixed(2)+" %"
                 }
             }
@@ -193,19 +174,19 @@
                 document.global_params.currentChunk = 0
             }
 
-            let chunk_size = document.global_params.chunk_size
+            const chunk_size = document.global_params.chunk_size
 
-            let canvas_width  = document.getElementById("canvas").width
-            let canvas_height = document.getElementById("canvas").height
-            let nb_chunks_width  = canvas_width  / chunk_size
-            let nb_chunks_height = canvas_height / chunk_size
-            let indexX = document.global_params.currentChunk%nb_chunks_width
-            let indexY = Math.floor(document.global_params.currentChunk/nb_chunks_height)
+            const canvas_width  = document.getElementById("canvas").width
+            const canvas_height = document.getElementById("canvas").height
+            const nb_chunks_width  = canvas_width  / chunk_size
+            const nb_chunks_height = canvas_height / chunk_size
+            const indexX = document.global_params.currentChunk%nb_chunks_width
+            const indexY = Math.floor(document.global_params.currentChunk/nb_chunks_height)
 
-            let startX = indexX*chunk_size
-            let startY = indexY*chunk_size
-            let chunk_width  = Math.min(chunk_size, canvas_width  - startX)
-            let chunk_height = Math.min(chunk_size, canvas_height - startY)
+            const startX = indexX*chunk_size
+            const startY = indexY*chunk_size
+            const chunk_width  = Math.min(chunk_size, canvas_width  - startX)
+            const chunk_height = Math.min(chunk_size, canvas_height - startY)
 
             if(chunk_height <= 0){
                 return null

@@ -190,14 +190,15 @@ export class Bbox{
         let maxX = -Infinity
         let maxY = -Infinity
         let maxZ = -Infinity
-        objs.forEach(obj => {
+        for(let i=0; i<objs.length; i++){
+            const obj = objs[i]
             if(obj.bbox.center.x < minX) minX = obj.bbox.center.x 
             if(obj.bbox.center.x > maxX) maxX = obj.bbox.center.x 
             if(obj.bbox.center.y < minY) minY = obj.bbox.center.y
             if(obj.bbox.center.y > maxY) maxY = obj.bbox.center.y 
             if(obj.bbox.center.z < minZ) minZ = obj.bbox.center.z 
             if(obj.bbox.center.z > maxZ) maxZ = obj.bbox.center.z 
-        })
+        }
         return Bbox.fromMinMax(self, minX, maxX, minY, maxY, minZ, maxZ)
     }
 
@@ -208,19 +209,19 @@ export class Bbox{
         let maxX = -Infinity
         let maxY = -Infinity
         let maxZ = -Infinity
-        objs.forEach(obj => {
+        for(let i=0; i<objs.length; i++){
+            const obj = objs[i]
             if(obj.bbox.minX < minX) minX = obj.bbox.minX
             if(obj.bbox.maxX > maxX) maxX = obj.bbox.maxX
             if(obj.bbox.minY < minY) minY = obj.bbox.minY
             if(obj.bbox.maxY > maxY) maxY = obj.bbox.maxY
             if(obj.bbox.minZ < minZ) minZ = obj.bbox.minZ
             if(obj.bbox.maxZ > maxZ) maxZ = obj.bbox.maxZ
-        })
+        }
         return Bbox.fromMinMax(self, minX, maxX, minY, maxY, minZ, maxZ)
     }
 
     static hitRay(bbox, ray){
-
         let tNearX = (bbox.minX - ray.origin.x) / ray.direction.x
         let tFarX  = (bbox.maxX - ray.origin.x) / ray.direction.x
         if(tNearX > tFarX){
@@ -239,9 +240,7 @@ export class Bbox{
             [tNearZ, tFarZ] = [tFarZ, tNearZ]
         }
 
-        let maxNear = Math.max(tNearX, tNearY, tNearZ)
-        let minFar  = Math.min(tFarX, tFarY, tFarZ)
-
-        return maxNear < minFar
+        return Math.max(tNearX, tNearY, tNearZ) < Math.min(tFarX, tFarY, tFarZ)
+        
     }
 }
