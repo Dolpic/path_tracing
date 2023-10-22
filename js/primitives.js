@@ -167,6 +167,7 @@ export class Bbox{
         self.minZ = minZ,
         self.maxZ = maxZ,
         self.center = Vec3.new((maxX+minX)/2, (maxY+minY)/2, (maxZ+minZ)/2)
+        self.diagonal = Vec3.new( maxX-minX, maxY-minY, maxZ-minZ)
         return self
     }
 
@@ -241,6 +242,9 @@ export class Bbox{
         }
 
         return Math.max(tNearX, tNearY, tNearZ) < Math.min(tFarX, tFarY, tFarZ)
-        
+    }
+
+    static surfaceArea(self){
+        return 2* (self.diagonal.x * self.diagonal.y + self.diagonal.x * self.diagonal.z + self.diagonal.y * self.diagonal.z)
     }
 }

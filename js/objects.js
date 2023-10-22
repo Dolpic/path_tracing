@@ -36,6 +36,10 @@ export class Sphere{
     normalAt(position){
         return Vec3.normalize(Vec3.sub(Vec3.clone(position), this.center))
     }
+
+    /*getSurfaceArea(){
+        return 4*Math.PI*this.radius*this.radius
+    }*/
 }
 
 export class Triangle{
@@ -50,15 +54,12 @@ export class Triangle{
         this.n31 = Vec3.sub( Vec3.clone(this.p1), this.p3)
         this.normal = Vec3.cross( Vec3.clone(this.n12), this.n23)
 
+        this.area = Vec3.norm(Vec3.cross( Vec3.mul(Vec3.clone(this.n31), -1), this.n12 ))
+
         Vec3.cross(this.n12, this.normal)
         Vec3.cross(this.n23, this.normal)
         Vec3.cross(this.n31, this.normal)
         this.d = - (this.normal.x*this.p1.x + this.normal.y*this.p1.y + this.normal.z*this.p1.z)
-
-        this.d1 = Vec3.new(0,0,0)
-        this.d2 = Vec3.new(0,0,0)
-        this.d3 = Vec3.new(0,0,0)
-        this.p  = Vec3.new(0,0,0)
 
         this.bbox = Bbox.fromMinMax( 
             Bbox.new(),
@@ -80,21 +81,16 @@ export class Triangle{
     }
 
     hit(ray){
-        const denominator = Vec3.dot(this.normal, ray.direction)
-        if(denominator == 0){
-            return Infinity
-        }
-
-        const t = -(Vec3.dot(this.normal, ray.origin) + this.d) / denominator
+        const t = -(Vec3.dot(this.normal, ray.origin) + this.d) / Vec3.dot(this.normal, ray.direction)
         if(t < 0.001){
             return Infinity
         }
 
-        Vec3.add(Vec3.mul(Vec3.equal(this.p, ray.direction), t), ray.origin)
+        const p = Vec3.add(Vec3.mul(Vec3.clone(ray.direction), t), ray.origin)
 
-        if( Vec3.dot( Vec3.sub(Vec3.equal(this.d1, this.p), this.p1), this.n12) > 0 ||
-            Vec3.dot( Vec3.sub(Vec3.equal(this.d2, this.p), this.p2), this.n23) > 0 ||
-            Vec3.dot( Vec3.sub(Vec3.equal(this.d3, this.p), this.p3), this.n31) > 0){
+        if( Vec3.dot( Vec3.sub(Vec3.clone(p), this.p1), this.n12) > 0 ||
+            Vec3.dot( Vec3.sub(Vec3.clone(p), this.p2), this.n23) > 0 ||
+            Vec3.dot( Vec3.sub(Vec3.clone(p), this.p3), this.n31) > 0){
             return Infinity
         }
         return t
@@ -108,6 +104,10 @@ export class Triangle{
         Vec3.cross(p2, p3)
         return Vec3.normalize(p2)
     }
+
+    /*getSurfaceArea(){
+        return this.area
+    }*/
 }
 
         /*let p1 = Vec3.clone(this.p1)

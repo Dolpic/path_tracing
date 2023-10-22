@@ -3,7 +3,7 @@ import { lambertianDiffuse } from "./materials.js";
 import { Color } from "./primitives.js";
 import Timer from "./Timer.js";
 import { Sphere, Triangle } from "./objects.js";
-import { computeBVH, gatherFromBVH } from "./BVH.js";
+import { computeBVH, gatherFromBVH, computeBVH2 } from "./BVH.js";
 
 onmessage = e => {
     switch(e.data.msg){
@@ -33,6 +33,7 @@ function init(objs, camera){
     }
 
     self.bvh = computeBVH(self.objs)
+    self.bvh2 = computeBVH2(self.objs)
 
     self.camera = camera
 
@@ -111,10 +112,15 @@ function trace(ray, max_iterations=25){
         let obj_found
 
         //self.timer.start()
-        
-        const considered_objs = gatherFromBVH(ray, self.bvh, self.timer)
 
-        //self.timer.step()
+        let considered_objs = []
+        self.timer.compare([
+            () => gatherFromBVH(ray, self.bvh, considered_objs),
+            () => gatherFromBVH(ray, self.bvh2, considered_objs),
+        ])
+        //gatherFromBVH(ray, self.bvh, considered_objs)
+
+        //self.timer.step("BVH")
 
         for(let i=0; i<considered_objs.length; i++){
             const cur_obj = considered_objs[i]
@@ -125,7 +131,7 @@ function trace(ray, max_iterations=25){
             }
         }
 
-        //self.timer.step()
+        //self.timer.step("HIT")
 
         if(t === Infinity){
             Color.mul(self.current_color, self.sky_color)
@@ -136,7 +142,7 @@ function trace(ray, max_iterations=25){
         lambertianDiffuse(ray, t, obj_found)
         Color.mul(self.current_color, self.multiplier)
 
-        //self.timer.step()
+        //self.timer.step("MATERIAL")
     }
     
     return {
