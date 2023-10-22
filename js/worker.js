@@ -1,9 +1,9 @@
 import Camera from "./camera.js"
-import { lambertianDiffuse } from "./materials.js";
+import { Granular_mirror, LambertianDiffuse, Material, PerfectDiffuse, Refract, Composite } from "./materials.js";
 import { Color } from "./primitives.js";
 import Timer from "./Timer.js";
 import { Sphere, Triangle } from "./objects.js";
-import { computeBVH, gatherFromBVH, computeBVH2 } from "./BVH.js";
+import { computeBVH, gatherFromBVH } from "./BVH.js";
 
 onmessage = e => {
     switch(e.data.msg){
@@ -20,27 +20,47 @@ function init(objs, camera){
     self.objs = []
     for(let i=0; i<objs.length; i++){
         const obj = objs[i]
+        let new_obj
         switch(obj.name){
             case "Sphere":
-                self.objs.push(Sphere.unSerialize(obj))
+                new_obj = Sphere.unSerialize(obj)
                 break
             case "Triangle":
-                self.objs.push(Triangle.unSerialize(obj))
+                new_obj = Triangle.unSerialize(obj)
                 break
             default:
                 console.error(`Unknown object : ${obj}`)
         }
+
+        let new_bxdf
+        switch(obj.material.BxDF.name){
+            case "perfectDiffuse":
+                new_bxdf = new PerfectDiffuse()
+                break
+            case "lambertianDiffuse":
+                new_bxdf = new LambertianDiffuse()
+                break
+            case "granular_mirror":
+                new_bxdf = new Granular_mirror()
+                break
+            case "refract":
+                new_bxdf = new Refract()
+                break
+            case "composite":
+                new_bxdf = new Composite()
+                break
+        }
+
+        new_obj.material = new Material(new_bxdf, obj.material.color, obj.material.multiplier)
+        self.objs.push(new_obj)
     }
 
     self.bvh = computeBVH(self.objs)
-    self.bvh2 = computeBVH2(self.objs)
 
     self.camera = camera
 
-    self.sky_color     = Color.new(0.8, 0.8, 1, 1)
-    self.multiplier    = Color.new(0.6, 0.4, 0.4, 1)
+    self.sky_color     = Color.new(0.7, 0.7, 1, 1)
     self.current_color = Color.new(1, 1, 1, 1)
-    self.initial_color = Color.new(0.8, 0.8, 1, 1)
     self.timer = new Timer()
 }
 
@@ -66,13 +86,14 @@ function render(params){
                 const dx = Math.random()
                 const dy = Math.random()
                 const ray = Camera.getRay(self.camera, (x+dx)/img_width, (y+dy)/img_height)
-                const result = trace(ray)
-                if(!result.has_hit){
-                    Color.add(final_color, result.color)
+                const has_hit = trace(ray)
+                Color.gamma_correct(ray.color)
+                if(!has_hit){
+                    Color.add(final_color, ray.color)
                     break
                 }else{
-                    Color.div(result.color, samples_per_pixel)
-                    Color.add(final_color, result.color)
+                    Color.div(ray.color, samples_per_pixel)
+                    Color.add(final_color, ray.color)
                 }
             }
 
@@ -89,7 +110,7 @@ function render(params){
         }
     }
 
-    timer.result()
+    //timer.result()
     
     postMessage({msg:"progress", progress:chunk_width*chunk_height-previous_index/4})
     return {
@@ -104,21 +125,15 @@ function render(params){
 
 function trace(ray, max_iterations=25){
     let has_hit = false
-    Color.equal(self.current_color, self.initial_color)
-
     for(let i=0; i<max_iterations; i++){
-
         let t = Infinity
         let obj_found
 
         //self.timer.start()
 
         let considered_objs = []
-        self.timer.compare([
-            () => gatherFromBVH(ray, self.bvh, considered_objs),
-            () => gatherFromBVH(ray, self.bvh2, considered_objs),
-        ])
-        //gatherFromBVH(ray, self.bvh, considered_objs)
+        gatherFromBVH(ray, self.bvh, considered_objs)
+
 
         //self.timer.step("BVH")
 
@@ -134,19 +149,14 @@ function trace(ray, max_iterations=25){
         //self.timer.step("HIT")
 
         if(t === Infinity){
-            Color.mul(self.current_color, self.sky_color)
+            Color.mul(ray.color, self.sky_color)
             break
         }
 
         has_hit = true
-        lambertianDiffuse(ray, t, obj_found)
-        Color.mul(self.current_color, self.multiplier)
+        obj_found.applyMaterial(ray, t)
 
         //self.timer.step("MATERIAL")
     }
-    
-    return {
-        has_hit: has_hit,
-        color: Color.gamma_correct(self.current_color)
-    }
+    return has_hit
 }

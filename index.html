@@ -37,15 +37,19 @@
         import Slider from "./js/ui/slider.js"
         import Tabs from "./js/ui/tabs.js"
         import Camera from "./js/camera.js"
-        import {Ray, Vec3} from "./js/primitives.js"
+        import {Ray, Vec3, Color} from "./js/primitives.js"
         import {Sphere, Triangle} from "./js/objects.js"
+        import {Material, LambertianDiffuse} from "./js/materials.js"
         document.Slider = Slider
         document.Tabs   = Tabs
         document.Camera = Camera
         document.Ray = Ray
         document.Vec3 = Vec3
+        document.Color = Color
         document.Sphere = Sphere
         document.Triangle = Triangle
+        document.Material = Material
+        document.LambertianDiffuse = LambertianDiffuse
     </script>
     <script>
         function init(){
@@ -54,8 +58,11 @@
             Camera   = document.Camera
             Ray      = document.Ray
             Vec3     = document.Vec3
+            Color    = document.Color
             Sphere   = document.Sphere
             Triangle = document.Triangle
+            Material = document.Material
+            LambertianDiffuse = document.LambertianDiffuse
 
             document.global_params = {
                 samples_per_pixel: 5,
@@ -102,23 +109,24 @@
                 workers.push(new Worker("js/worker.js", {type: "module"}))
             }
 
-            ModelHelper.loadWavefront("teapot/teapot_very_simple.obj").then( teapot => {
+            ModelHelper.loadWavefront("teapot/teapot_simple.obj").then( teapot => {
+
+                let default_material = new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1), Color.new(1, 1, 1, 1))
 
                 let obj = [
-                    new Sphere( Vec3.new(0,   -20.98, -4), 20),
-                    new Sphere( Vec3.new(1.2, 1.2, -5), 0.5),
-                    new Sphere( Vec3.new(-1,  1.2, -5), 0.5),
-                    //new Triangle( Vec3.new(0.5,0.5,-5), Vec3.new(-0.5,0.5,-2), Vec3.new(0.5,-0.5,-2) ),
+                    new Sphere( Vec3.new(0,   -20.98, -4), 20, default_material),
+                    new Sphere( Vec3.new(1.2, 1.2, -5), 0.5, default_material),
+                    new Sphere( Vec3.new(-1,  1.2, -5), 0.5, default_material),
 
-                    /*new Sphere( Vec3.new(-0.8, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(-0.6, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(-0.4, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(-0.2, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.0, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.2, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.4, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.6, 1.5, -5), 0.1),
-                    new Sphere( Vec3.new(0.8, 1.5, -5), 0.1),*/
+                    new Sphere( Vec3.new(-0.8, 1.5, -5), 0.1, default_material),
+                    new Sphere( Vec3.new(-0.6, 1.5, -5), 0.1, default_material),
+                    new Sphere( Vec3.new(-0.4, 1.5, -5), 0.1, default_material),
+                    new Sphere( Vec3.new(-0.2, 1.5, -5), 0.1, default_material),
+                    new Sphere( Vec3.new(0.0, 1.5, -5), 0.1, default_material),
+                    new Sphere( Vec3.new(0.2, 1.5, -5), 0.1, default_material),
+                    new Sphere( Vec3.new(0.4, 1.5, -5), 0.1, default_material),
+                    new Sphere( Vec3.new(0.6, 1.5, -5), 0.1, default_material),
+                    new Sphere( Vec3.new(0.8, 1.5, -5), 0.1, default_material),
                 ]
                 for(let i=0; i<teapot.faces.length; i++){
                     let p1 = Vec3.new(
@@ -136,26 +144,7 @@
                         parseFloat(teapot.vertices[teapot.faces[i][2]][1])/3.5-1, 
                         parseFloat(teapot.vertices[teapot.faces[i][2]][2])/3.5-4
                     )
-                    obj.push(new Triangle(p1, p2, p3))
-                }
-
-                for(let i=0; i<teapot.faces.length; i++){
-                    let p1 = Vec3.new(
-                        parseFloat(teapot.vertices[teapot.faces[i][0]][0])/3.5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][0]][1])/3.5-0.5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][0]][2])/3.5-4
-                    )
-                    let p2 = Vec3.new(
-                        parseFloat(teapot.vertices[teapot.faces[i][1]][0])/3.5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][1]][1])/3.5-0.5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][1]][2])/3.5-4
-                    )
-                    let p3 = Vec3.new(
-                        parseFloat(teapot.vertices[teapot.faces[i][2]][0])/3.5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][2]][1])/3.5-0.5, 
-                        parseFloat(teapot.vertices[teapot.faces[i][2]][2])/3.5-4
-                    )
-                    obj.push(new Triangle(p1, p2, p3))
+                    obj.push(new Triangle(p1, p2, p3, default_material))
                 }
 
                 workers.forEach( w => {

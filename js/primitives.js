@@ -1,8 +1,12 @@
 export class Ray {
     constructor(){console.error("Ray has no constructor !")}
 
-    static new(origin, direction){
-        return {origin:origin, direction:direction}
+    static new(origin, direction, color){
+        return {
+            origin:origin, 
+            direction:direction,
+            color:color
+        }
     }
 
     static moveAt(ray, t){
@@ -30,7 +34,14 @@ export class Vec3 {
         return self
     }
 
-    static mul(self, scalar){
+    static mul(self, other){
+        self.x *= other.x
+        self.y *= other.y
+        self.z *= other.z
+        return self
+    }
+
+    static mulScalar(self, scalar){
         self.x *= scalar
         self.y *= scalar
         self.z *= scalar
@@ -116,6 +127,15 @@ export class Color{
 
     static new(r, g, b, a=1){
         return {r:r, g:g, b:b, a:a}
+    }
+
+    static clone(other){
+        return {
+            r:other.r, 
+            g:other.g, 
+            b:other.b, 
+            a:other.a
+        }
     }
 
     static equal(self, other){

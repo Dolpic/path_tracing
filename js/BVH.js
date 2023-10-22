@@ -38,44 +38,6 @@ export function computeBVH(objs){
     }
 }
 
-export function computeBVH2(objs){
-    let bbox = Bbox.new()
-    Bbox.getEnglobing(bbox, objs)
-
-    if(objs.length < 2){
-        return {
-            is_leaf: true,
-            objs: objs,
-            bbox: bbox
-        }
-    }
-
-    let leftObjs  = []
-    let rightObjs = []
-    if(!split_half(objs, leftObjs, rightObjs)){
-        return {
-            is_leaf: true,
-            objs: objs,
-            bbox: bbox
-        }
-    }
-
-    if(leftObjs.length == 0 || rightObjs.length == 0){
-        return {
-            is_leaf: true,
-            objs: leftObjs.length == 0 ? rightObjs : leftObjs,
-            bbox: bbox
-        }
-    }
-
-    return {
-        is_leaf: false,
-        left:    computeBVH(leftObjs),
-        right:   computeBVH(rightObjs),
-        bbox:    bbox
-    }
-}
-
 function split_half(objs, left, right){
     let centersBbox = Bbox.new()
     Bbox.getEnglobingCenters(centersBbox, objs)
@@ -190,7 +152,7 @@ function split_SAH(objs, left, right){
 
 export function gatherFromBVH(ray, bvh, acc, timer=null){
 
-    //if (timer != null) timer.start()
+   // if (timer != null) timer.start()
 
     const hit = Bbox.hitRay(bvh.bbox, ray, timer)
 
@@ -209,3 +171,24 @@ export function gatherFromBVH(ray, bvh, acc, timer=null){
 
     //if (timer != null) timer.step()
 }
+
+
+/*
+export function gatherFromBVH3(ray, bvh, acc){
+    let queue = [bvh]
+    for(let i=0; i<queue.length; i++){
+        const current_node = queue[i]
+        const hit = Bbox.hitRay(current_node.bbox, ray, timer)
+        if(hit){
+            if(current_node.is_leaf){
+                for(let j=0; j<current_node.objs.length; j++){
+                    acc.push(current_node.objs[j])
+                }
+            }else{
+                queue.push(current_node.left)
+                queue.push(current_node.right)
+            }
+        }
+    }
+}
+*/

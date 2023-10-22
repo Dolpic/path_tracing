@@ -1,7 +1,7 @@
 import { Bbox, Vec3 } from "./primitives.js"
 
 export class Sphere{
-    constructor(center, radius){
+    constructor(center, radius, material){
         this.name = "Sphere"
         this.center = center
         this.radius = radius
@@ -9,10 +9,11 @@ export class Sphere{
             Vec3.subScalar(Vec3.clone(center), this.radius), 
             Vec3.addScalar(Vec3.clone(center), this.radius)
         )
+        this.material = material
     }
 
     static unSerialize(sphere){
-        return new Sphere(sphere.center, sphere.radius)
+        return new Sphere(sphere.center, sphere.radius, sphere.material)
     }
 
     getBbox(){
@@ -37,24 +38,25 @@ export class Sphere{
         return Vec3.normalize(Vec3.sub(Vec3.clone(position), this.center))
     }
 
-    /*getSurfaceArea(){
-        return 4*Math.PI*this.radius*this.radius
-    }*/
+    applyMaterial(ray, t){
+        return this.material.updateRay(ray, t, this)
+    }
 }
 
 export class Triangle{
-    constructor(p1, p2, p3){
+    constructor(p1, p2, p3, material){
         this.name = "Triangle"
         this.p1 = p1
         this.p2 = p2
         this.p3 = p3
+        this.material = material
 
         this.n12 = Vec3.sub( Vec3.clone(this.p2), this.p1)
         this.n23 = Vec3.sub( Vec3.clone(this.p3), this.p2)
         this.n31 = Vec3.sub( Vec3.clone(this.p1), this.p3)
         this.normal = Vec3.cross( Vec3.clone(this.n12), this.n23)
 
-        this.area = Vec3.norm(Vec3.cross( Vec3.mul(Vec3.clone(this.n31), -1), this.n12 ))
+        this.area = Vec3.norm(Vec3.cross( Vec3.mulScalar(Vec3.clone(this.n31), -1), this.n12 ))
 
         Vec3.cross(this.n12, this.normal)
         Vec3.cross(this.n23, this.normal)
@@ -73,7 +75,7 @@ export class Triangle{
     }
 
     static unSerialize(triangle){
-        return new Triangle(triangle.p1, triangle.p2, triangle.p3)
+        return new Triangle(triangle.p1, triangle.p2, triangle.p3, triangle.material)
     }
 
     getBbox(){
@@ -86,7 +88,7 @@ export class Triangle{
             return Infinity
         }
 
-        const p = Vec3.add(Vec3.mul(Vec3.clone(ray.direction), t), ray.origin)
+        const p = Vec3.add(Vec3.mulScalar(Vec3.clone(ray.direction), t), ray.origin)
 
         if( Vec3.dot( Vec3.sub(Vec3.clone(p), this.p1), this.n12) > 0 ||
             Vec3.dot( Vec3.sub(Vec3.clone(p), this.p2), this.n23) > 0 ||
@@ -105,9 +107,9 @@ export class Triangle{
         return Vec3.normalize(p2)
     }
 
-    /*getSurfaceArea(){
-        return this.area
-    }*/
+    applyMaterial(ray, t){
+        return this.material.updateRay(ray, t, this)
+    }
 }
 
         /*let p1 = Vec3.clone(this.p1)
