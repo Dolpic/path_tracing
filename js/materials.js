@@ -9,11 +9,11 @@ export function unSerialize(material){
         case "lambertianDiffuse":
             new_bxdf = new LambertianDiffuse()
             break
-        case "granular_mirror":
-            new_bxdf = new Granular_mirror(material.BxDF.granular_factor)
+        case "reflect":
+            new_bxdf = new Reflect(material.BxDF.granular_factor)
             break
         case "refract":
-            new_bxdf = new Refract()
+            new_bxdf = new Refract(material.BxDF.eta_from, material.BxDF.eta_to)
             break
         case "composite":
             new_bxdf = new Composite()
@@ -21,22 +21,19 @@ export function unSerialize(material){
         default:
             console.error(`Unknown material : ${material}`)
     }
-    return new Material(new_bxdf, material.color, material.multiplier)
+    return new Material(new_bxdf, material.color)
 }
 
 
 export class Material{
-    constructor(BxDF, color, multiplier){
+    constructor(BxDF, color){
         this.BxDF = BxDF
         this.color = color
-        this.multiplier = multiplier
-
-        this.color_mul = Color.mul(color, multiplier)
     }
 
     updateRay(ray, t, obj){
         this.BxDF.apply(ray, t, obj)
-        Color.mul(ray.color, this.color_mul)
+        Color.mul(ray.color, this.color)
     }
 }
 
@@ -59,29 +56,26 @@ export class LambertianDiffuse{
     }
 }
 
-export class Granular_mirror{
+export class Reflect{
     constructor(granular_factor=0.1){
-        this.name="granular_mirror"
+        this.name="reflect"
         this.granular_factor = granular_factor
     }
     apply(ray, t, obj){
         Ray.moveAt(ray, t)
         let normal = obj.normalAt(ray.origin)
-        let dot = Vec3.dot(ray.direction, normal)
+        let reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(ray.direction, normal) )
 
         // TODO necessary ?
-        if(dot > 0){
+       /* if(dot > 0){
             Vec3.mulScalar(normal, -1)
         }
-        dot = Vec3.dot(ray.direction, normal)
-
+        dot = Vec3.dot(ray.direction, normal)*/
 
         if(this.granular_factor > 0){
-            /*let reflectJiggle = Vec3.mulScalar( Vec3.normalize(Vec3.random_spheric(ray.direction)), this.granular_factor) 
-            let reflectDir = Vec3.mulScalar(normal, 2*dot )
-            Vec3.sub(ray.direction, Vec3.add(reflectDir, reflectJiggle ))*/
+            let reflectJiggle = Vec3.mulScalar( Vec3.normalize(Vec3.random_spheric(Vec3.new())), this.granular_factor) 
+            Vec3.sub(ray.direction, Vec3.add(reflectDir, reflectJiggle ))
         }else{
-            let reflectDir = Vec3.mulScalar(normal, 2*dot )
             Vec3.sub(ray.direction, reflectDir)
         }
     }
@@ -94,18 +88,20 @@ export class Refract{
         this.eta_to = eta_to
     }
     apply(ray, t, obj){
-        let normal = obj.normalAt(ray.origin) // Wrong !
-        let dot = Vec3.dot(ray.direction, normal)
+        Ray.moveAt(ray, t)
+        let normal = obj.normalAt(ray.origin)
+        let dir_normalized = Vec3.normalize(Vec3.clone(ray.direction))
+        let dot = Vec3.dot(dir_normalized, normal)
         let eta_ratio = this.eta_from/this.eta_to
     
-        if(eta_ratio * Math.sqrt(1-dot*dot) > 1){
-            mirror(ray, t, obj)
+        if(eta_ratio * Math.sqrt(1-dot*dot) > 1){ // Total internal reflection
+            let reflectDir = Vec3.mulScalar(normal, 2*dot )
+            Vec3.sub(ray.direction, reflectDir)
         }else{
-            Ray.moveAt(ray, t)
-            let toAdd = Vec3.dot(Vec3.mulScalar( Vec3.clone(ray.direction), -1), normal)
-            let perpendicular =  Vec3.add(ray.direction, toAdd)
-            Vec3.mul(perpendicular, eta_ratio)
-            let parallel = Vec3.mulScalar(normal, -Math.sqrt(1-perpendicular.norm_squared()))
+            let cos_theta = Vec3.dot( Vec3.mulScalar( Vec3.clone(dir_normalized), -1), normal)
+            let cos_theta_n = Vec3.mulScalar( Vec3.clone(normal), cos_theta)
+            let perpendicular = Vec3.mulScalar(Vec3.add(dir_normalized, cos_theta_n), eta_ratio)
+            let parallel = Vec3.mulScalar(normal, -Math.sqrt( 1-Vec3.norm_squared(perpendicular)  ))
             ray.direction = Vec3.add(perpendicular, parallel)
         }
     }

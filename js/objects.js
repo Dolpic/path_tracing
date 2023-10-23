@@ -95,6 +95,7 @@ export class Triangle{
             this.p1_normal = Vec3.normalize(p1_normal)
             this.p2_normal = Vec3.normalize(p2_normal)
             this.p3_normal = Vec3.normalize(p3_normal)
+            this.interpolate_denominator = (this.p2.y-this.p3.y)*(this.p1.x-this.p3.x) + (this.p3.x-this.p2.x)*(this.p1.y-this.p3.y)
         }else{
             this.interpolated_normals = false
             this.p1_normal = null
@@ -138,20 +139,10 @@ export class Triangle{
     normalAt(position){
         if(this.interpolated_normals){
             // https://en.wikipedia.org/wiki/Barycentric_coordinate_system
-            let denominator = (this.p2.y-this.p3.y)*(this.p1.x-this.p3.x) + (this.p3.x-this.p2.x)*(this.p1.y-this.p3.y)
-            let w_1 = ((this.p2.y-this.p3.y)*(position.x-this.p3.x)+(this.p3.x-this.p2.x)*(position.y-this.p3.y))/denominator
-            let w_2 = ((this.p3.y-this.p1.y)*(position.x-this.p3.x)+(this.p1.x-this.p3.x)*(position.y-this.p3.y))/denominator
+            // TODO Handle the case where the triangle is in the Z plane
+            let w_1 = ((this.p2.y-this.p3.y)*(position.x-this.p3.x)+(this.p3.x-this.p2.x)*(position.y-this.p3.y))/this.interpolate_denominator
+            let w_2 = ((this.p3.y-this.p1.y)*(position.x-this.p3.x)+(this.p1.x-this.p3.x)*(position.y-this.p3.y))/this.interpolate_denominator
             let w_3 = 1 - w_1 - w_2
-
-            /*console.log({
-                "w_1":w_1,
-                "w_2":w_2,
-                "w_3":w_3
-            })*/
-
-            /*if(w_3 < 0){
-                console.log("ERRR")
-            }*/
 
             let result = Vec3.new(
                 this.p1_normal.x*w_1 + this.p2_normal.x*w_2 + this.p3_normal.x*w_3,

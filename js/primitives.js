@@ -19,7 +19,7 @@ export class Ray {
 export class Vec3 {
     constructor(){console.error("Vec3 has no constructor !")}
 
-    static new(x, y, z){
+    static new(x=0, y=0, z=0){
         return {x:x, y:y, z:z}
     }
 

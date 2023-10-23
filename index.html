@@ -29,6 +29,12 @@
                 <li>User-defined number of samples per pixels (for now the samples in each pixel have random position)</li>
                 <li>Camera with modifiable position and FOV</li>
                 <li>Usage of a <a href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">Bounding Volume Hierarchie</a> to improve the performance</li>
+                <li>Materials including</li>
+                <ul>
+                    <li>Lambertian diffuse</li>
+                    <li>Reflections, with granularity</li>
+                    <li>Refraction, with total internal reflection</li>
+                </ul>
             </ul>
         </div>
     </body>
@@ -39,7 +45,7 @@
         import Camera from "./js/camera.js"
         import {Ray, Vec3, Color} from "./js/primitives.js"
         import {Sphere, Triangle} from "./js/objects.js"
-        import {Material, LambertianDiffuse, Granular_mirror} from "./js/materials.js"
+        import {Material, LambertianDiffuse, Reflect, Refract} from "./js/materials.js"
         document.Slider = Slider
         document.Tabs   = Tabs
         document.Camera = Camera
@@ -50,7 +56,8 @@
         document.Triangle = Triangle
         document.Material = Material
         document.LambertianDiffuse = LambertianDiffuse
-        document.Granular_mirror = Granular_mirror
+        document.Reflect = Reflect
+        document.Refract = Refract
     </script>
     <script>
         function init(){
@@ -64,7 +71,8 @@
             Triangle = document.Triangle
             Material = document.Material
             LambertianDiffuse = document.LambertianDiffuse
-            Granular_mirror = document.Granular_mirror
+            Reflect = document.Reflect
+            Refract = document.Refract
 
             document.global_params = {
                 samples_per_pixel: 5,
@@ -113,13 +121,15 @@
 
             ModelHelper.loadWavefront("teapot/teapot_smooth.obj").then( teapot => {
 
-                let diffuse = new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1), Color.new(1, 1, 1, 1))
-                let mirror  = new Material(new Granular_mirror(0), Color.new(0.4, 0.8, 0.3, 1), Color.new(1, 1, 1, 1))
+                let diffuse = new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1))
+                let mirror  = new Material(new Reflect(0), Color.new(0.4, 0.8, 0.3, 1))
+                let mirror2  = new Material(new Reflect(0.2), Color.new(0.4, 0.8, 0.3, 1))
+                let refract = new Material(new Refract(1, 1.5), Color.new(0.8, 0.8, 1, 1))
 
                 let obj = [
                     new Sphere( Vec3.new(0,   -80.98, -4), 80, diffuse),
-                    new Sphere( Vec3.new(1.2, 1.2, -5), 0.5, mirror),
-                    new Sphere( Vec3.new(-1.2,  1.2, -5), 0.5, mirror),
+                    new Sphere( Vec3.new(1.2, 1.2, -5), 0.5, mirror2),
+                    new Sphere( Vec3.new(-1.2,  1.2, -5), 0.5, mirror2),
 
                     
                     new Sphere( Vec3.new(-0.6, 1.5, -5), 0.1, diffuse),
@@ -141,6 +151,13 @@
 
                     new Sphere( Vec3.new(-0.3, -0.28, -2.7), 0.1, diffuse),
                     new Sphere( Vec3.new(0.3, -0.28, -2.7), 0.1, diffuse),
+
+
+                    new Sphere( Vec3.new(-0.7, -0.86, -3), 0.15, refract),
+                    new Sphere( Vec3.new(0.7, -0.86, -3), 0.15, refract),
+
+                    new Sphere( Vec3.new(-0.7, -0.56, -3), 0.15, refract),
+                    new Sphere( Vec3.new(0.7, -0.56, -3), 0.15, refract),
                 ]
                 for(let i=0; i<teapot.faces.length; i++){
                     let p1 = Vec3.new(
@@ -173,7 +190,6 @@
                         parseFloat(teapot.normals[teapot.faces[i].normals[2]][1]), 
                         parseFloat(teapot.normals[teapot.faces[i].normals[2]][2])
                     )
-                    //console.log(p1_n)
                     obj.push(new Triangle(p1, p2, p3, mirror, p1_n, p2_n, p3_n))
                 }
 

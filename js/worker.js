@@ -49,7 +49,7 @@ function render(params){
                     Color.add(final_color, ray.color)
                 }else{
                     Color.add(final_color, ray.color)
-                    break
+                    //break
                 }
             }
 
