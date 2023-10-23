@@ -1,4 +1,21 @@
 import { Bbox, Vec3 } from "./primitives.js"
+import { unSerialize as material_unSerialize} from "./materials.js";
+
+export function unSerialize(obj){
+    let new_obj
+    switch(obj.name){
+        case "Sphere":
+            new_obj = Sphere.unSerialize(obj)
+            break
+        case "Triangle":
+            new_obj = Triangle.unSerialize(obj)
+            break
+        default:
+            console.error(`Unknown object : ${obj}`)
+    }
+    new_obj.material = material_unSerialize(obj.material)
+    return new_obj
+}
 
 export class Sphere{
     constructor(center, radius, material){
@@ -44,7 +61,7 @@ export class Sphere{
 }
 
 export class Triangle{
-    constructor(p1, p2, p3, material){
+    constructor(p1, p2, p3, material, p1_normal=null, p2_normal=null, p3_normal=null){
         this.name = "Triangle"
         this.p1 = p1
         this.p2 = p2
@@ -54,7 +71,7 @@ export class Triangle{
         this.n12 = Vec3.sub( Vec3.clone(this.p2), this.p1)
         this.n23 = Vec3.sub( Vec3.clone(this.p3), this.p2)
         this.n31 = Vec3.sub( Vec3.clone(this.p1), this.p3)
-        this.normal = Vec3.cross( Vec3.clone(this.n12), this.n23)
+        this.normal = Vec3.normalize(Vec3.cross( Vec3.clone(this.n12), this.n23))
 
         this.area = Vec3.norm(Vec3.cross( Vec3.mulScalar(Vec3.clone(this.n31), -1), this.n12 ))
 
@@ -72,10 +89,30 @@ export class Triangle{
             Math.min(this.p1.z, this.p2.z, this.p3.z),
             Math.max(this.p1.z, this.p2.z, this.p3.z),
         )
+
+        if(p1_normal != null && p2_normal != null && p3_normal != null){
+            this.interpolated_normals = true
+            this.p1_normal = Vec3.normalize(p1_normal)
+            this.p2_normal = Vec3.normalize(p2_normal)
+            this.p3_normal = Vec3.normalize(p3_normal)
+        }else{
+            this.interpolated_normals = false
+            this.p1_normal = null
+            this.p2_normal = null
+            this.p3_normal = null
+
+        }
     }
 
     static unSerialize(triangle){
-        return new Triangle(triangle.p1, triangle.p2, triangle.p3, triangle.material)
+        return new Triangle(
+            triangle.p1, 
+            triangle.p2, 
+            triangle.p3, 
+            triangle.material,
+            triangle.p1_normal,
+            triangle.p2_normal,
+            triangle.p3_normal)
     }
 
     getBbox(){
@@ -99,12 +136,32 @@ export class Triangle{
     }
 
     normalAt(position){
-        let p2 = Vec3.clone(this.p2)
-        let p3 = Vec3.clone(this.p3)
-        Vec3.sub(p2, this.p1)
-        Vec3.sub(p3, this.p1)
-        Vec3.cross(p2, p3)
-        return Vec3.normalize(p2)
+        if(this.interpolated_normals){
+            // https://en.wikipedia.org/wiki/Barycentric_coordinate_system
+            let denominator = (this.p2.y-this.p3.y)*(this.p1.x-this.p3.x) + (this.p3.x-this.p2.x)*(this.p1.y-this.p3.y)
+            let w_1 = ((this.p2.y-this.p3.y)*(position.x-this.p3.x)+(this.p3.x-this.p2.x)*(position.y-this.p3.y))/denominator
+            let w_2 = ((this.p3.y-this.p1.y)*(position.x-this.p3.x)+(this.p1.x-this.p3.x)*(position.y-this.p3.y))/denominator
+            let w_3 = 1 - w_1 - w_2
+
+            /*console.log({
+                "w_1":w_1,
+                "w_2":w_2,
+                "w_3":w_3
+            })*/
+
+            /*if(w_3 < 0){
+                console.log("ERRR")
+            }*/
+
+            let result = Vec3.new(
+                this.p1_normal.x*w_1 + this.p2_normal.x*w_2 + this.p3_normal.x*w_3,
+                this.p1_normal.y*w_1 + this.p2_normal.y*w_2 + this.p3_normal.y*w_3,
+                this.p1_normal.z*w_1 + this.p2_normal.z*w_2 + this.p3_normal.z*w_3,
+            )
+            return Vec3.normalize(result)
+        }else{
+            return Vec3.clone(this.normal)
+        }
     }
 
     applyMaterial(ray, t){

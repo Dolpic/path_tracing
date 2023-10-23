@@ -20,7 +20,7 @@ export default class Camera{
         camera.ray.direction.y = -v*camera.viewport_height  + camera.half_viewport_height
         camera.ray.direction.z = camera.minus_focal_length
         Vec3.equal(camera.ray.origin, camera.default_position)
-        camera.ray.color = Color.clone(camera.start_color)
+        Color.equal(camera.ray.color, camera.start_color)
         return camera.ray
     }
 }

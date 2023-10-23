@@ -125,7 +125,7 @@ export class Vec3 {
 export class Color{
     constructor(){console.error("Color has no constructor !")}
 
-    static new(r, g, b, a=1){
+    static new(r=0, g=0, b=0, a=1){
         return {r:r, g:g, b:b, a:a}
     }
 
@@ -175,6 +175,8 @@ export class Color{
         self.b = Math.sqrt(self.b)
         return self
     }
+
+    static ZERO = {r:0, g:0, b:0, a:0}
 }
 
 export class Bbox{

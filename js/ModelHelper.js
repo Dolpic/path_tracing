@@ -22,14 +22,16 @@ class ModelHelper{
                     result.colors.push(1,0.5,0.5,1.0)
                     break
                 case "vn":
-                    normals_list.push([line_split[1], line_split[2], line_split[3]])
+                    result.normals.push([line_split[1], line_split[2], line_split[3]])
                     break
                 case "f":
                     const f1 = ModelHelper.faceInfo(line_split[1])
                     const f2 = ModelHelper.faceInfo(line_split[2])
                     const f3 = ModelHelper.faceInfo(line_split[3])
-                    result.faces.push([f1.vertex, f2.vertex, f3.vertex])
-                    result.normals.push(...normals_list[f1.normal], ...normals_list[f2.normal], ...normals_list[f3.normal])
+                    result.faces.push({
+                        vertices : [f1.vertex, f2.vertex, f3.vertex],
+                        normals  : [f1.normal, f2.normal, f3.normal]
+                    })
                     break
             }
 
