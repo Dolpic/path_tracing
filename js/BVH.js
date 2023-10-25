@@ -180,15 +180,13 @@ export function gatherFromBVH(ray, bvh, acc, timer=null){
     //if (timer != null) timer.step()
 }
 
-
-
-/*export function gatherFromBVH2(ray, bvh, acc, timer=null){
+/*export function gatherFromBVH(ray, bvh, acc, timer=null){
     if (timer != null) timer.start()
 
     let queue = [bvh]
     for(let i=0; i<queue.length; i++){
         const node = queue[i]
-        const hit = Bbox.hitRay2(node.bbox, ray)
+        const hit = Bbox.hitRay(node.bbox, ray)
         if(hit){
             if(node.is_leaf){
                 for(let j=0; j<node.objs.length; j++){

@@ -193,9 +193,9 @@
                     obj.push(new Triangle(p1, p2, p3, mirror, p1_n, p2_n, p3_n))
                 }
 
-                workers.forEach( w => {
+                workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
-                    w.postMessage({msg:"init", objs:obj, camera:camera})
+                    w.postMessage({msg:"init", objs:obj, camera:camera, id:i})
                     let next = getNextChunk()
                     if(next != null){
                         w.postMessage(next)

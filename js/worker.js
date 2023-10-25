@@ -7,13 +7,14 @@ import { computeBVH, gatherFromBVH } from "./BVH.js";
 onmessage = e => {
     switch(e.data.msg){
         case "init":
-            return init(e.data.objs, e.data.camera)
+            return init(e.data.id, e.data.objs, e.data.camera)
         case "start":
             return postMessage(render(e.data))
     }
 }
 
-function init(objs, camera){
+function init(id, objs, camera){
+    self.id        = id
     self.objs      = objs.map(obj => unSerialize(obj))
     self.bvh       = computeBVH(self.objs)
     self.camera    = camera
@@ -57,7 +58,7 @@ function render(params){
             imageData[index+2] = final_color.b*255
             imageData[index+3] = final_color.a*255
 
-            if(index-previous_index == 10000){
+            if(index-previous_index >= 10000){
                 postMessage({msg:"progress", progress:(index-previous_index)/4})
                 previous_index = index
             }
@@ -82,17 +83,17 @@ function trace(ray, max_iterations=50){
         let t = Infinity
         let obj_found
 
-        //self.timer.start()
+        self.timer.start()
 
         let considered_objs = []
         /*self.timer.compare([
             () => gatherFromBVH(ray, self.bvh, considered_objs),
             () => gatherFromBVH2(ray, self.bvh, considered_objs),
         ])*/
-        gatherFromBVH(ray, self.bvh, considered_objs, self.timer)
+        gatherFromBVH(ray, self.bvh, considered_objs)
 
 
-        //self.timer.step("BVH")
+        self.timer.step("BVH")
 
         for(let i=0; i<considered_objs.length; i++){
             const cur_obj = considered_objs[i]
@@ -103,7 +104,7 @@ function trace(ray, max_iterations=50){
             }
         }
 
-        //self.timer.step("HIT")
+        self.timer.step("HIT")
 
         if(t === Infinity){
             Color.mul(ray.color, self.sky_color)
@@ -112,6 +113,6 @@ function trace(ray, max_iterations=50){
 
         obj_found.applyMaterial(ray, t)
 
-        //self.timer.step("MATERIAL")
+        self.timer.step("MATERIAL")
     }
 }

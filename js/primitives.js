@@ -244,12 +244,40 @@ export class Bbox{
         return Bbox.fromMinMax(self, minX, maxX, minY, maxY, minZ, maxZ)
     }
 
+
     static hitRay(bbox, ray){
+
+        const xInverse = 1 / ray.direction.x
+        let tNearX = (bbox.minX - ray.origin.x) * xInverse
+        let tFarX  = (bbox.maxX - ray.origin.x) * xInverse
+        if(tNearX > tFarX){
+            [tNearX, tFarX] = [tFarX, tNearX]
+        }
+
+        const yInverse = 1 / ray.direction.y
+        let tNearY = (bbox.minY - ray.origin.y) * yInverse
+        let tFarY  = (bbox.maxY - ray.origin.y) * yInverse
+        if(tNearY > tFarY){
+            [tNearY, tFarY] = [tFarY, tNearY]
+        }
+
+        const zInverse = 1 / ray.direction.z
+        let tNearZ = (bbox.minZ - ray.origin.z) * zInverse
+        let tFarZ  = (bbox.maxZ - ray.origin.z) * zInverse
+        if(tNearZ > tFarZ){
+            [tNearZ, tFarZ] = [tFarZ, tNearZ]
+        }
+
+        return Math.max(tNearX, tNearY, tNearZ) < Math.min(tFarX, tFarY, tFarZ)
+    }
+
+    /*static hitRay(bbox, ray){
         let min
         let max
 
-        const tNearX = (bbox.minX - ray.origin.x) / ray.direction.x
-        const tFarX  = (bbox.maxX - ray.origin.x) / ray.direction.x
+        const xInverse = 1 / ray.direction.x
+        const tNearX = (bbox.minX - ray.origin.x) * xInverse
+        const tFarX  = (bbox.maxX - ray.origin.x) * xInverse
 
         if(tNearX > tFarX){
             min = tFarX
@@ -259,8 +287,9 @@ export class Bbox{
             max = tFarX
         }
 
-        const tNearY = (bbox.minY - ray.origin.y) / ray.direction.y
-        const tFarY  = (bbox.maxY - ray.origin.y) / ray.direction.y
+        const yInverse = 1 / ray.direction.y
+        const tNearY = (bbox.minY - ray.origin.y) * yInverse
+        const tFarY  = (bbox.maxY - ray.origin.y) * yInverse
 
         if(tNearY > tFarY){
             min = min < tFarY ? min : tFarY
@@ -270,10 +299,11 @@ export class Bbox{
             max = max > tFarY ? max : tFarY
         }
 
-        if(max < min) return false
+        //if(max < min) return false
 
-        const tNearZ = (bbox.minZ - ray.origin.z) / ray.direction.z
-        const tFarZ  = (bbox.maxZ - ray.origin.z) / ray.direction.z
+        const zInverse = 1 / ray.direction.z
+        const tNearZ = (bbox.minZ - ray.origin.z) * zInverse
+        const tFarZ  = (bbox.maxZ - ray.origin.z) * zInverse
 
         if(tNearZ > tFarZ){
             min = min < tFarZ ? min : tFarZ
@@ -284,7 +314,7 @@ export class Bbox{
         }
 
         return min < max
-    }
+    }*/
 
     static surfaceArea(self){
         return 2* (self.diagonal.x * self.diagonal.y + self.diagonal.x * self.diagonal.z + self.diagonal.y * self.diagonal.z)
