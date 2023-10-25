@@ -65,7 +65,7 @@ function render(params){
         }
     }
 
-    self.timer.result()
+    //self.timer.result()
     
     postMessage({msg:"progress", progress:chunk_width*chunk_height-previous_index/4})
     return {
@@ -83,7 +83,7 @@ function trace(ray, max_iterations=50){
         let t = Infinity
         let obj_found
 
-        self.timer.start()
+        //self.timer.start()
 
         let considered_objs = []
         /*self.timer.compare([
@@ -93,7 +93,7 @@ function trace(ray, max_iterations=50){
         gatherFromBVH(ray, self.bvh, considered_objs)
 
 
-        self.timer.step("BVH")
+        //self.timer.step("BVH")
 
         for(let i=0; i<considered_objs.length; i++){
             const cur_obj = considered_objs[i]
@@ -104,7 +104,7 @@ function trace(ray, max_iterations=50){
             }
         }
 
-        self.timer.step("HIT")
+        //self.timer.step("HIT")
 
         if(t === Infinity){
             Color.mul(ray.color, self.sky_color)
@@ -113,6 +113,6 @@ function trace(ray, max_iterations=50){
 
         obj_found.applyMaterial(ray, t)
 
-        self.timer.step("MATERIAL")
+        //self.timer.step("MATERIAL")
     }
 }
