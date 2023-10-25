@@ -44,13 +44,9 @@ function render(params){
                 const dx = Math.random()
                 const dy = Math.random()
                 const ray = Camera.getRay(self.camera, (x+dx)/img_width, (y+dy)/img_height)
-                if(trace(ray)){
-                    Color.div(ray.color, samples_per_pixel)
-                    Color.add(final_color, ray.color)
-                }else{
-                    Color.add(final_color, ray.color)
-                    //break
-                }
+                trace(ray)
+                Color.div(ray.color, samples_per_pixel)
+                Color.add(final_color, ray.color)
             }
 
             Color.gamma_correct(final_color)
@@ -68,7 +64,7 @@ function render(params){
         }
     }
 
-    //timer.result()
+    self.timer.result()
     
     postMessage({msg:"progress", progress:chunk_width*chunk_height-previous_index/4})
     return {
@@ -82,7 +78,6 @@ function render(params){
 }
 
 function trace(ray, max_iterations=50){
-    let has_hit = false
     for(let i=0; i<max_iterations; i++){
         let t = Infinity
         let obj_found
@@ -90,7 +85,11 @@ function trace(ray, max_iterations=50){
         //self.timer.start()
 
         let considered_objs = []
-        gatherFromBVH(ray, self.bvh, considered_objs)
+        /*self.timer.compare([
+            () => gatherFromBVH(ray, self.bvh, considered_objs),
+            () => gatherFromBVH2(ray, self.bvh, considered_objs),
+        ])*/
+        gatherFromBVH(ray, self.bvh, considered_objs, self.timer)
 
 
         //self.timer.step("BVH")
@@ -111,10 +110,8 @@ function trace(ray, max_iterations=50){
             break
         }
 
-        has_hit = true
         obj_found.applyMaterial(ray, t)
 
         //self.timer.step("MATERIAL")
     }
-    return has_hit
 }

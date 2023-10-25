@@ -106,7 +106,7 @@ function split_SAH(objs, left, right){
 
     let cost_no_split = objs.length
 
-    const nb_split = 12
+    const nb_split = 20
     let min_split_cost = Infinity
     let best_right_candidates = []
     let best_left_candidates = []
@@ -152,9 +152,17 @@ function split_SAH(objs, left, right){
 
 export function gatherFromBVH(ray, bvh, acc, timer=null){
 
-   // if (timer != null) timer.start()
+    //if (timer != null) timer.start()
 
-    const hit = Bbox.hitRay(bvh.bbox, ray, timer)
+    //let hit
+    /*if(timer != null){
+        hit = timer.compare([
+            () => {return Bbox.hitRay(bvh.bbox, ray)},
+            () => {return Bbox.hitRay2(bvh.bbox, ray)},
+        ])
+    }else{*/
+    const hit = Bbox.hitRay(bvh.bbox, ray)
+    //}
 
     //if (timer != null) timer.step()
 
@@ -173,22 +181,25 @@ export function gatherFromBVH(ray, bvh, acc, timer=null){
 }
 
 
-/*
-export function gatherFromBVH3(ray, bvh, acc){
+
+/*export function gatherFromBVH2(ray, bvh, acc, timer=null){
+    if (timer != null) timer.start()
+
     let queue = [bvh]
     for(let i=0; i<queue.length; i++){
-        const current_node = queue[i]
-        const hit = Bbox.hitRay(current_node.bbox, ray, timer)
+        const node = queue[i]
+        const hit = Bbox.hitRay2(node.bbox, ray)
         if(hit){
-            if(current_node.is_leaf){
-                for(let j=0; j<current_node.objs.length; j++){
-                    acc.push(current_node.objs[j])
+            if(node.is_leaf){
+                for(let j=0; j<node.objs.length; j++){
+                    acc.push(node.objs[j])
                 }
             }else{
-                queue.push(current_node.left)
-                queue.push(current_node.right)
+                queue.push(node.left)
+                queue.push(node.right)
             }
         }
     }
-}
-*/
+
+    if (timer != null) timer.step()
+}*/
