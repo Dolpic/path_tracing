@@ -89,22 +89,31 @@ export class Refract{
     }
     apply(ray, t, obj){
         Ray.moveAt(ray, t)
-        let normal = obj.normalAt(ray.origin)
-        let dir_normalized = Vec3.normalize(Vec3.clone(ray.direction))
-        let dot = Vec3.dot(dir_normalized, normal)
-        let eta_ratio = this.eta_from/this.eta_to
-    
-        if(eta_ratio * Math.sqrt(1-dot*dot) > 1){ // Total internal reflection
-            let reflectDir = Vec3.mulScalar(normal, 2*dot )
+        const normal = obj.normalAt(ray.origin)
+        const dir_normalized = Vec3.normalize(Vec3.clone(ray.direction))
+        const cos_theta = Vec3.dot( Vec3.mulScalar( Vec3.clone(dir_normalized), -1), normal)
+        const eta_ratio = this.eta_from/this.eta_to
+
+        if(
+            eta_ratio * Math.sqrt(1-cos_theta*cos_theta) > 1 || // Total internal reflection
+            this.schlick_approx(cos_theta, this.eta_from, this.eta_to) > Math.random() // Schlick's approximation to the fresnel equations
+        ){ 
+            const reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(dir_normalized, normal) )
             Vec3.sub(ray.direction, reflectDir)
         }else{
-            let cos_theta = Vec3.dot( Vec3.mulScalar( Vec3.clone(dir_normalized), -1), normal)
-            let cos_theta_n = Vec3.mulScalar( Vec3.clone(normal), cos_theta)
+            const cos_theta_n = Vec3.mulScalar( Vec3.clone(normal), cos_theta)
             let perpendicular = Vec3.mulScalar(Vec3.add(dir_normalized, cos_theta_n), eta_ratio)
             let parallel = Vec3.mulScalar(normal, -Math.sqrt( 1-Vec3.norm_squared(perpendicular)  ))
             ray.direction = Vec3.add(perpendicular, parallel)
         }
     }
+
+    schlick_approx(cos, eta_from, eta_to) {
+        let r0 = (eta_from-eta_to)/(eta_from+eta_to)
+        r0 = r0*r0
+        return r0 + (1-r0)*Math.pow(1-cos, 5)
+    }
+
 }
 
 export class Composite{
