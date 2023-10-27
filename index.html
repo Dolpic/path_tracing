@@ -27,7 +27,12 @@
             <ul>
                 <li>Handles spheres and triangle rendering, with the feature to load any triangulated mesh</li>
                 <li>User-defined number of samples per pixels (for now the samples in each pixel have random position)</li>
-                <li>Camera with modifiable position and FOV</li>
+                <li>Camera with</li>
+                <ul>
+                    <li>Modifiable position</li>
+                    <li>Modifiable field of view</li>
+                    <li>Defocus blur with modifiable lens size and focal distance</li>
+                </ul>
                 <li>Usage of a <a href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">Bounding Volume Hierarchie</a> to improve the performance</li>
                 <li>Materials including</li>
                 <ul>
@@ -80,11 +85,12 @@
                 chunk_size:        100,
                 camera:{
                     fov: 45,
+                    lens_radius:0,
+                    focal_distance:0,
                     x:0,
                     y:0,
                     z:0
-                },
-                pixels_computed: 0
+                }
             }
 
             let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Camera", "Objects"], "Camera")
@@ -92,34 +98,54 @@
                 <p>Position</p>
                 <div id="camera_position"></div>
                 <p>Lens</p>
-                <div id="camera_others"></div>
+                <div id="camera_lens"></div>
             `)
             tabs.setContent("Objects", `
                 <p>-- Tab under construction --</p>
             `)
 
-            new Slider("camera_position", "X", 0,  val=>document.global_params.camera.x=val, -20, 20, 1)
-            new Slider("camera_position", "Y", 0,  val=>document.global_params.camera.y=val, -20, 20, 1)
-            new Slider("camera_position", "Z", 0,  val=>document.global_params.camera.z=val, -20, 20)
-            new Slider("camera_others", "Field of view", 45, val=>document.global_params.camera.fov=val, 5, 170)
+            new Slider("camera_position", "X", 0, val=>document.global_params.camera.x=val, -20, 20, 1)
+            new Slider("camera_position", "Y", 0, val=>document.global_params.camera.y=val, -20, 20, 1)
+            new Slider("camera_position", "Z", 0, val=>document.global_params.camera.z=val, -20, 20)
+            new Slider("camera_lens", "Field of view",  45, val=>document.global_params.camera.fov=val,            5, 170)
+            new Slider("camera_lens", "Lens radius",    0,  val=>document.global_params.camera.lens_radius=val,    0, 1)
+            new Slider("camera_lens", "Focal distance", 0,  val=>document.global_params.camera.focal_distance=val, 0, 10)
             new Slider("bottom_parameters", "Samples per pixel", 25,  val=>document.global_params.samples_per_pixel=val, 5, 100, 1, 0)
+        }
+
+        function reset(){
+            if(document.global_state != undefined){
+                document.global_state.workers.forEach(w => w.terminate())
+            }
+            document.global_state = {
+                currentChunk: 0,
+                pixels_computed: 0,
+                workers: []
+            }
         }
  
         function render(){
+            reset()
             const params = document.global_params
+            const workers = document.global_state.workers
             const canvas    = document.getElementById("canvas")
             const ctx       = canvas.getContext("2d")
             const imageData = ctx.createImageData(canvas.width, canvas.height)
-            const camera = new Camera(canvas.width/canvas.height, params.camera.fov, Vec3.new(params.camera.x, params.camera.y, params.camera.z))
+            const camera = new Camera(
+                canvas.width/canvas.height, 
+                params.camera.fov, 
+                Vec3.new(params.camera.x, params.camera.y, params.camera.z),
+                params.camera.lens_radius,
+                params.camera.focal_distance
+            )
 
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-            let workers = []
             for(let i=0; i<params.nb_workers; i++){
                 workers.push(new Worker("js/worker.js", {type: "module"}))
             }
 
-            ModelHelper.loadWavefront("teapot/teapot_smooth.obj").then( teapot => {
+            ModelHelper.loadWavefront("teapot/teapot_smooth.obj").then(teapot => {
 
                 let diffuse = new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1))
                 let mirror  = new Material(new Reflect(0), Color.new(0.4, 0.8, 0.3, 1))
@@ -196,7 +222,7 @@
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
                     w.postMessage({msg:"init", objs:obj, camera:camera, id:i})
-                    let next = getNextChunk()
+                    const next = getNextChunk()
                     if(next != null){
                         w.postMessage(next)
                     }
@@ -215,27 +241,22 @@
                         w.postMessage(next)
                     }
                 }else{
-                    document.global_params.pixels_computed += result.progress
+                    document.global_state.pixels_computed += result.progress
                     const nb_pixels = document.getElementById("canvas").width*document.getElementById("canvas").height
-                    const progress = 100*document.global_params.pixels_computed/nb_pixels
+                    const progress = 100*document.global_state.pixels_computed/nb_pixels
                     document.getElementById("progress").innerHTML = progress.toFixed(2)+" %"
                 }
             }
         }
 
         function getNextChunk(){
-            if(document.global_params.currentChunk === undefined){
-                document.global_params.currentChunk = 0
-            }
-
             const chunk_size = document.global_params.chunk_size
-
             const canvas_width  = document.getElementById("canvas").width
             const canvas_height = document.getElementById("canvas").height
             const nb_chunks_width  = canvas_width  / chunk_size
             const nb_chunks_height = canvas_height / chunk_size
-            const indexX = document.global_params.currentChunk%nb_chunks_width
-            const indexY = Math.floor(document.global_params.currentChunk/nb_chunks_height)
+            const indexX = document.global_state.currentChunk%nb_chunks_width
+            const indexY = Math.floor(document.global_state.currentChunk/nb_chunks_height)
 
             const startX = indexX*chunk_size
             const startY = indexY*chunk_size
@@ -245,9 +266,7 @@
             if(chunk_height <= 0){
                 return null
             }
-
-            document.global_params.currentChunk++
-            //console.log(`Start chunk (${indexX};${indexY}) at (${indexX*chunk_size};${indexY*chunk_size}) with width ${chunk_width}, height ${chunk_height}`)
+            document.global_state.currentChunk++
             return {
                 msg: "start",
                 img_width:  canvas_width,

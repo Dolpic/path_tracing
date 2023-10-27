@@ -1,7 +1,7 @@
 import {Ray, Vec3, Color} from "./primitives.js"
 
 export default class Camera{
-    constructor(aspect_ratio, fov, position, lensRadius=0.1, focalDistance=-3){
+    constructor(aspect_ratio, fov, position, lensRadius=0, focalDistance=0){
         this.viewport_width  = 1
         this.viewport_height = 1/aspect_ratio
         this.focal_length    = (this.viewport_width/2) / Math.tan(fov*(Math.PI/180)/2)
@@ -24,7 +24,7 @@ export default class Camera{
         Vec3.equal(camera.ray.origin, camera.default_position)
         Color.equal(camera.ray.color, camera.start_color)
 
-        if(camera.lensRadius > 0){
+        if(camera.lensRadius > 0 && camera.focalDistance > 0){
             let lensU = Math.random()
             let lensV = Math.random()
             // TODO Not optimized but ok for now
@@ -33,14 +33,12 @@ export default class Camera{
                 lensV = Math.random()
             }
 
-            let ft = camera.focalDistance / camera.ray.direction.z
-            let pFocus = Ray.at(camera.ray, ft)
-
+            const focus_point = Ray.at(camera.ray, -camera.focalDistance/camera.ray.direction.z)
             camera.ray.origin.x += camera.lensRadius * lensU
             camera.ray.origin.y += camera.lensRadius * lensV
-            camera.ray.direction.x = pFocus.x - camera.ray.origin.x
-            camera.ray.direction.y = pFocus.y - camera.ray.origin.y
-            camera.ray.direction.z = pFocus.z - camera.ray.origin.z
+            camera.ray.direction.x = focus_point.x - camera.ray.origin.x
+            camera.ray.direction.y = focus_point.y - camera.ray.origin.y
+            camera.ray.direction.z = focus_point.z - camera.ray.origin.z
         }
 
         return camera.ray
