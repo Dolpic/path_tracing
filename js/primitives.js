@@ -14,6 +14,14 @@ export class Ray {
         ray.origin.y += ray.direction.y * t
         ray.origin.z += ray.direction.z * t
     }
+
+    static at(ray, t){
+        return Vec3.new(
+            ray.direction.x * t,
+            ray.direction.y * t,
+            ray.direction.z * t
+        )
+    }
 }
 
 export class Vec3 {
