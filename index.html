@@ -31,14 +31,15 @@
                 <ul>
                     <li>Modifiable position</li>
                     <li>Modifiable field of view</li>
-                    <li>Defocus blur with modifiable lens size and focal distance</li>
+                    <li>Depth of field and defocus blur with modifiable lens size and focal distance</li>
                 </ul>
                 <li>Usage of a <a href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">Bounding Volume Hierarchie</a> to improve the performance</li>
                 <li>Materials including</li>
                 <ul>
-                    <li>Lambertian diffuse</li>
-                    <li>Reflections, with granularity</li>
-                    <li>Refraction, with <a href="https://en.wikipedia.org/wiki/Total_internal_reflection#">total internal reflection</a> and <a href="https://en.wikipedia.org/wiki/Schlick%27s_approximation">Schlick's approximation</a></li>
+                    <li>Lambertian diffuse reflection</li>
+                    <li>Perfect specular reflection, with granularity</li>
+                    <li>Perfect specular transmission, with <a href="https://en.wikipedia.org/wiki/Total_internal_reflection#">total internal reflection</a> and <a href="https://en.wikipedia.org/wiki/Schlick%27s_approximation">Schlick's approximation</a></li>
+                    <li>General dielectric model for smooth surfaces, with reflectance derived from the <a href="https://en.wikipedia.org/wiki/Fresnel_equations">Fresnel equations</a></li>
                 </ul>
             </ul>
         </div>
@@ -50,7 +51,7 @@
         import Camera from "./js/camera.js"
         import {Ray, Vec3, Color} from "./js/primitives.js"
         import {Sphere, Triangle} from "./js/objects.js"
-        import {Material, LambertianDiffuse, Reflect, Refract} from "./js/materials.js"
+        import {Material, LambertianDiffuse, Reflect, Refract, Dielectric} from "./js/materials.js"
         document.Slider = Slider
         document.Tabs   = Tabs
         document.Camera = Camera
@@ -63,6 +64,7 @@
         document.LambertianDiffuse = LambertianDiffuse
         document.Reflect = Reflect
         document.Refract = Refract
+        document.Dielectric = Dielectric
     </script>
     <script>
         function init(){
@@ -78,6 +80,7 @@
             LambertianDiffuse = document.LambertianDiffuse
             Reflect = document.Reflect
             Refract = document.Refract
+            Dielectric = document.Dielectric
 
             document.global_params = {
                 samples_per_pixel: 5,
@@ -110,7 +113,7 @@
             new Slider("camera_lens", "Field of view",  45, val=>document.global_params.camera.fov=val,            5, 170)
             new Slider("camera_lens", "Lens radius",    0,  val=>document.global_params.camera.lens_radius=val,    0, 1)
             new Slider("camera_lens", "Focal distance", 0,  val=>document.global_params.camera.focal_distance=val, 0, 10)
-            new Slider("bottom_parameters", "Samples per pixel", 25,  val=>document.global_params.samples_per_pixel=val, 5, 100, 1, 0)
+            new Slider("bottom_parameters", "Samples per pixel", 25,  val=>document.global_params.samples_per_pixel=val, 5, 150, 1, 0)
         }
 
         function reset(){
@@ -151,6 +154,7 @@
                 let mirror  = new Material(new Reflect(0), Color.new(0.4, 0.8, 0.3, 1))
                 let mirror2  = new Material(new Reflect(0.2), Color.new(0.4, 0.8, 0.3, 1))
                 let refract = new Material(new Refract(1, 1.5), Color.new(0.8, 0.8, 1, 1))
+                let dielectric = new Material(new Dielectric(1, 1.5), Color.new(0.8, 0.8, 1, 1))
 
                 let obj = [
                     new Sphere( Vec3.new(0,   -80.98, -4), 80, diffuse),

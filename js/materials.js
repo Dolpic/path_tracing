@@ -18,6 +18,9 @@ export function unSerialize(material){
         case "composite":
             new_bxdf = new Composite()
             break
+        case "dielectric":
+            new_bxdf = new Dielectric(material.BxDF.eta_from, material.BxDF.eta_to)
+            break
         default:
             console.error(`Unknown material : ${material}`)
     }
@@ -114,6 +117,53 @@ export class Refract{
         return r0 + (1-r0)*Math.pow(1-cos, 5)
     }
 
+}
+
+export class Dielectric{
+    constructor(eta_from=1, eta_to=1){
+        this.name="dielectric"
+        this.eta_from = eta_from
+        this.eta_to = eta_to
+    }
+
+    apply(ray, t, obj){
+        Ray.moveAt(ray, t)
+        const normal = obj.normalAt(ray.origin)
+        const dir_normalized = Vec3.normalize(Vec3.clone(ray.direction))
+        const eta_ratio = this.eta_from/this.eta_to
+        const cos_theta_incident = Vec3.dot( Vec3.mulScalar( Vec3.clone(dir_normalized), -1), normal)
+        const cos_theta_transmitted = this.cos_theta_from_snell_law(eta_ratio, cos_theta_incident)
+        if(cos_theta_transmitted === false){ // Total internal reflection
+            this.reflect(ray, normal, dir_normalized)
+        }else{
+            const r = this.fresnel_reflectance(eta_ratio, cos_theta_incident, cos_theta_transmitted)
+            if(r > Math.random()){
+                this.reflect(ray, normal, dir_normalized)
+            }else{ // Transmit
+                const cos_theta_n = Vec3.mulScalar( Vec3.clone(normal), cos_theta_incident)
+                const perpendicular = Vec3.mulScalar(Vec3.add(dir_normalized, cos_theta_n), eta_ratio)
+                const parallel = Vec3.mulScalar(normal, -Math.sqrt( 1-Vec3.norm_squared(perpendicular)  ))
+                ray.direction = Vec3.add(perpendicular, parallel)
+            }
+        }
+    }
+
+    cos_theta_from_snell_law(eta_ratio, cos_theta_incident){
+        const squared = 1 - eta_ratio*eta_ratio*(1-cos_theta_incident*cos_theta_incident)
+        return squared < 0 ? false : Math.sqrt(squared)
+    }
+
+    fresnel_reflectance(eta_ratio, cos_theta_incident, cos_theta_transmitted){
+        const ci = cos_theta_incident
+        const ct = cos_theta_transmitted
+        const r_parallel = (eta_ratio*ci-ct) / (eta_ratio*ci+ct)
+        const r_perpendicular = (ci-eta_ratio*ct) / (ci+eta_ratio*ct)
+        return (r_parallel*r_parallel + r_perpendicular*r_perpendicular)/2
+    }
+
+    reflect(ray, normal, dir_normalized){
+        Vec3.sub(ray.direction, Vec3.mulScalar(normal, 2*Vec3.dot(dir_normalized, normal)))
+    }
 }
 
 export class Composite{
