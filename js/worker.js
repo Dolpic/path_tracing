@@ -1,7 +1,7 @@
 import Camera from "./camera.js"
 import { Color } from "./primitives.js";
 import Timer from "./Timer.js";
-import { unSerialize } from "./objects.js";
+import { unSerialize } from "./shapes.js";
 import { computeBVH, gatherFromBVH } from "./BVH.js";
 
 onmessage = e => {

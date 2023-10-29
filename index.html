@@ -44,14 +44,15 @@
             </ul>
         </div>
     </body>
-    <script src="js/ModelHelper.js"></script>
     <script type="module">
         import Slider from "./js/ui/slider.js"
         import Tabs from "./js/ui/tabs.js"
         import Camera from "./js/camera.js"
         import {Ray, Vec3, Color} from "./js/primitives.js"
-        import {Sphere, Triangle} from "./js/objects.js"
+        import {Sphere, Triangle} from "./js/shapes.js"
         import {Material, LambertianDiffuse, Reflect, Refract, Dielectric} from "./js/materials.js"
+        import Matrix from "./js/Matrix.js"
+        import Objects from "./js/Objects.js"
         document.Slider = Slider
         document.Tabs   = Tabs
         document.Camera = Camera
@@ -65,6 +66,8 @@
         document.Reflect = Reflect
         document.Refract = Refract
         document.Dielectric = Dielectric
+        document.Matrix = Matrix
+        document.Objects = Objects
     </script>
     <script>
         function init(){
@@ -81,6 +84,8 @@
             Reflect = document.Reflect
             Refract = document.Refract
             Dielectric = document.Dielectric
+            Matrix = document.Matrix
+            Objects = document.Objects
 
             document.global_params = {
                 samples_per_pixel: 5,
@@ -148,15 +153,22 @@
                 workers.push(new Worker("js/worker.js", {type: "module"}))
             }
 
-            ModelHelper.loadWavefront("teapot/teapot_smooth.obj").then(teapot => {
+            const diffuse    = new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1))
+            const mirror     = new Material(new Reflect(0), Color.new(0.4, 0.8, 0.3, 1))
+            const mirror2    = new Material(new Reflect(0.2), Color.new(0.4, 0.8, 0.3, 1))
+            const refract    = new Material(new Refract(1, 1.5), Color.new(0.8, 0.8, 1, 1))
+            const dielectric = new Material(new Dielectric(1, 1.5), Color.new(0.8, 0.8, 1, 1))
 
-                let diffuse = new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1))
-                let mirror  = new Material(new Reflect(0), Color.new(0.4, 0.8, 0.3, 1))
-                let mirror2  = new Material(new Reflect(0.2), Color.new(0.4, 0.8, 0.3, 1))
-                let refract = new Material(new Refract(1, 1.5), Color.new(0.8, 0.8, 1, 1))
-                let dielectric = new Material(new Dielectric(1, 1.5), Color.new(0.8, 0.8, 1, 1))
+            Objects.loadObjects([
+                {
+                    file: "teapot/teapot_smooth",
+                    material: mirror,
+                    transformMatrix: (new Matrix()).transform([0, -1, -4], [0,0,0], [0.5,0.5,0.5])
+                }
+            ]).then(objs => {
+                const [teapot] = objs
 
-                let obj = [
+                const obj = [
                     new Sphere( Vec3.new(0,   -80.98, -4), 80, diffuse),
                     new Sphere( Vec3.new(1.2, 1.2, -5), 0.5, mirror2),
                     new Sphere( Vec3.new(-1.2,  1.2, -5), 0.5, mirror2),
@@ -188,40 +200,9 @@
 
                     new Sphere( Vec3.new(-0.7, -0.56, -3), 0.15, refract),
                     new Sphere( Vec3.new(0.7, -0.56, -3), 0.15, refract),
+
+                    ...teapot
                 ]
-                for(let i=0; i<teapot.faces.length; i++){
-                    let p1 = Vec3.new(
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[0]][0])/2, 
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[0]][1])/2-1, 
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[0]][2])/2-4
-                    )
-                    let p2 = Vec3.new(
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[1]][0])/2, 
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[1]][1])/2-1, 
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[1]][2])/2-4
-                    )
-                    let p3 = Vec3.new(
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[2]][0])/2, 
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[2]][1])/2-1, 
-                        parseFloat(teapot.vertices[teapot.faces[i].vertices[2]][2])/2-4
-                    )
-                    let p1_n = Vec3.new(
-                        parseFloat(teapot.normals[teapot.faces[i].normals[0]][0]), 
-                        parseFloat(teapot.normals[teapot.faces[i].normals[0]][1]), 
-                        parseFloat(teapot.normals[teapot.faces[i].normals[0]][2])
-                    )
-                    let p2_n = Vec3.new(
-                        parseFloat(teapot.normals[teapot.faces[i].normals[1]][0]), 
-                        parseFloat(teapot.normals[teapot.faces[i].normals[1]][1]), 
-                        parseFloat(teapot.normals[teapot.faces[i].normals[1]][2])
-                    )
-                    let p3_n = Vec3.new(
-                        parseFloat(teapot.normals[teapot.faces[i].normals[2]][0]), 
-                        parseFloat(teapot.normals[teapot.faces[i].normals[2]][1]), 
-                        parseFloat(teapot.normals[teapot.faces[i].normals[2]][2])
-                    )
-                    obj.push(new Triangle(p1, p2, p3, mirror, p1_n, p2_n, p3_n))
-                }
 
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
