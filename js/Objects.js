@@ -64,9 +64,9 @@ export default class Objects{
             const p1_t = transformMatrix.applyToPoint(p1)
             const p2_t = transformMatrix.applyToPoint(p2)
             const p3_t = transformMatrix.applyToPoint(p3)
-            const p1_nt = transformMatrix.applyToPoint(p1_n)
-            const p2_nt = transformMatrix.applyToPoint(p2_n)
-            const p3_nt = transformMatrix.applyToPoint(p3_n)
+            const p1_nt = transformMatrix.applyToNormal(p1_n)
+            const p2_nt = transformMatrix.applyToNormal(p2_n)
+            const p3_nt = transformMatrix.applyToNormal(p3_n)
             result.push(new Triangle(p1_t, p2_t, p3_t, material, p1_nt, p2_nt, p3_nt))
         }
         return result

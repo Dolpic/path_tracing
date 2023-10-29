@@ -16,6 +16,14 @@ export default class Matrix{
         }
     }
 
+    applyToNormal(n){
+        return {
+            x:this.m[0]*n.x + this.m[4]*n.y + this.m[8]*n.z  ,
+            y:this.m[1]*n.x + this.m[5]*n.y + this.m[9]*n.z  ,
+            z:this.m[2]*n.x + this.m[6]*n.y + this.m[10]*n.z 
+        }
+    }
+
     transform(translation, rotation, scale){
         this.translate(...translation)
         this.rotate(...rotation)
