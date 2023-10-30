@@ -46,46 +46,20 @@
     </body>
     <script type="module">
         import Slider from "./js/ui/slider.js"
-        import Tabs from "./js/ui/tabs.js"
-        import Camera from "./js/camera.js"
-        import {Ray, Vec3, Color} from "./js/primitives.js"
-        import {Sphere, Triangle} from "./js/shapes.js"
-        import {Material, LambertianDiffuse, Reflect, Refract, Dielectric} from "./js/materials.js"
-        import Matrix from "./js/Matrix.js"
-        import Objects from "./js/Objects.js"
+        import Tabs   from "./js/ui/tabs.js"
+        import Camera from "./js/Camera.js"
+        import Scenes from "./js/scenes.js"
         document.Slider = Slider
         document.Tabs   = Tabs
         document.Camera = Camera
-        document.Ray = Ray
-        document.Vec3 = Vec3
-        document.Color = Color
-        document.Sphere = Sphere
-        document.Triangle = Triangle
-        document.Material = Material
-        document.LambertianDiffuse = LambertianDiffuse
-        document.Reflect = Reflect
-        document.Refract = Refract
-        document.Dielectric = Dielectric
-        document.Matrix = Matrix
-        document.Objects = Objects
+        document.Scenes = Scenes
     </script>
     <script>
         function init(){
-            Slider   = document.Slider
-            Tabs     = document.Tabs
-            Camera   = document.Camera
-            Ray      = document.Ray
-            Vec3     = document.Vec3
-            Color    = document.Color
-            Sphere   = document.Sphere
-            Triangle = document.Triangle
-            Material = document.Material
-            LambertianDiffuse = document.LambertianDiffuse
-            Reflect = document.Reflect
-            Refract = document.Refract
-            Dielectric = document.Dielectric
-            Matrix = document.Matrix
-            Objects = document.Objects
+            Slider = document.Slider
+            Tabs   = document.Tabs
+            Camera = document.Camera
+            Scenes = document.Scenes
 
             document.global_params = {
                 samples_per_pixel: 5,
@@ -142,71 +116,20 @@
             const camera = new Camera(
                 canvas.width/canvas.height, 
                 params.camera.fov, 
-                Vec3.new(params.camera.x, params.camera.y, params.camera.z),
+                [params.camera.x, params.camera.y, params.camera.z],
                 params.camera.lens_radius,
                 params.camera.focal_distance
             )
-
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
             for(let i=0; i<params.nb_workers; i++){
                 workers.push(new Worker("js/worker.js", {type: "module"}))
             }
 
-            const diffuse    = new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1))
-            const mirror     = new Material(new Reflect(0), Color.new(0.4, 0.8, 0.3, 1))
-            const mirror2    = new Material(new Reflect(0.2), Color.new(0.4, 0.8, 0.3, 1))
-            const refract    = new Material(new Refract(1, 1.5), Color.new(0.8, 0.8, 1, 1))
-            const dielectric = new Material(new Dielectric(1, 1.5), Color.new(0.8, 0.8, 1, 1))
-
-            Objects.loadObjects([
-                {
-                    file: "teapot/teapot_smooth",
-                    material: mirror,
-                    transformMatrix: (new Matrix()).transform([0, -1, -4], [0,0,0], [0.5,0.5,0.5])
-                }
-            ]).then(objs => {
-                const [teapot] = objs
-
-                const obj = [
-                    new Sphere( Vec3.new(0,   -80.98, -4), 80, diffuse),
-                    new Sphere( Vec3.new(1.2, 1.2, -5), 0.5, mirror2),
-                    new Sphere( Vec3.new(-1.2,  1.2, -5), 0.5, mirror2),
-
-                    
-                    new Sphere( Vec3.new(-0.6, 1.5, -5), 0.1, diffuse),
-                    new Sphere( Vec3.new(-0.4, 1.5, -5), 0.1, diffuse),
-                    new Sphere( Vec3.new(-0.2, 1.5, -5), 0.1, diffuse),
-                    new Sphere( Vec3.new(0.0, 1.5, -5), 0.1, diffuse),
-                    new Sphere( Vec3.new(0.2, 1.5, -5), 0.1, diffuse),
-                    new Sphere( Vec3.new(0.4, 1.5, -5), 0.1, diffuse),
-                    new Sphere( Vec3.new(0.6, 1.5, -5), 0.1, diffuse),
-
-                    new Sphere( Vec3.new(-0.3, -0.88, -2.7), 0.1, diffuse),
-                    new Sphere( Vec3.new(0.3, -0.88, -2.7), 0.1, diffuse),
-
-                    new Sphere( Vec3.new(-0.3, -0.68, -2.7), 0.1, diffuse),
-                    new Sphere( Vec3.new(0.3, -0.68, -2.7), 0.1, diffuse),
-
-                    new Sphere( Vec3.new(-0.3, -0.48, -2.7), 0.1, diffuse),
-                    new Sphere( Vec3.new(0.3, -0.48, -2.7), 0.1, diffuse),
-
-                    new Sphere( Vec3.new(-0.3, -0.28, -2.7), 0.1, diffuse),
-                    new Sphere( Vec3.new(0.3, -0.28, -2.7), 0.1, diffuse),
-
-
-                    new Sphere( Vec3.new(-0.7, -0.86, -3), 0.15, refract),
-                    new Sphere( Vec3.new(0.7, -0.86, -3), 0.15, refract),
-
-                    new Sphere( Vec3.new(-0.7, -0.56, -3), 0.15, refract),
-                    new Sphere( Vec3.new(0.7, -0.56, -3), 0.15, refract),
-
-                    ...teapot
-                ]
-
+            Scenes.loadScene(Scenes.Dragons()).then(shapes => {
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
-                    w.postMessage({msg:"init", objs:obj, camera:camera, id:i})
+                    w.postMessage({msg:"init", objs:shapes, camera:camera, id:i})
                     const next = getNextChunk()
                     if(next != null){
                         w.postMessage(next)

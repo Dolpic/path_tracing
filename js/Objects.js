@@ -1,4 +1,5 @@
 import { Triangle } from "./shapes.js";
+import { Vec3 } from "./primitives.js";
 
 export default class Objects{
     static async loadWavefront(file){
