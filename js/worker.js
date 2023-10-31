@@ -1,25 +1,26 @@
 import Camera from "./Camera.js"
 import { Color } from "./primitives.js";
 import Timer from "./Timer.js";
-import { unSerialize } from "./shapes.js";
+import { deserialize } from "./shapes.js";
 import { computeBVH, gatherFromBVH } from "./BVH.js";
+import { deserialize as deserialize_mat } from "./materials.js";
 
 onmessage = e => {
     switch(e.data.msg){
         case "init":
-            return init(e.data.id, e.data.objs, e.data.camera)
+            return init(e.data.id, e.data.scene.shapes, e.data.scene.materials, e.data.camera)
         case "start":
             return postMessage(render(e.data))
     }
 }
 
-function init(id, objs, camera){
+function init(id, shapes, materials, camera){
+    self.timer     = new Timer()
     self.id        = id
-    self.objs      = objs.map(obj => unSerialize(obj))
-    self.bvh       = computeBVH(self.objs)
+    self.materials = materials.map(mat=>deserialize_mat(mat))
+    self.bvh       = computeBVH(shapes.map(obj=>deserialize(obj)), self.timer)
     self.camera    = camera
     self.sky_color = Color.new(0.7, 0.7, 1, 1)
-    self.timer     = new Timer()
 }
 
 function render(params){
@@ -65,7 +66,7 @@ function render(params){
         }
     }
 
-    //self.timer.result()
+    self.timer.result()
     
     postMessage({msg:"progress", progress:chunk_width*chunk_height-previous_index/4})
     return {
@@ -86,11 +87,7 @@ function trace(ray, max_iterations=50){
         //self.timer.start()
 
         let considered_objs = []
-        /*self.timer.compare([
-            () => gatherFromBVH(ray, self.bvh, considered_objs),
-            () => gatherFromBVH2(ray, self.bvh, considered_objs),
-        ])*/
-        gatherFromBVH(ray, self.bvh, considered_objs)
+        gatherFromBVH(ray, self.bvh, considered_objs, self.timer)
 
 
         //self.timer.step("BVH")
@@ -104,14 +101,14 @@ function trace(ray, max_iterations=50){
             }
         }
 
-        //self.timer.step("HIT")
+       //self.timer.step("HIT")
 
         if(t === Infinity){
             Color.mul(ray.color, self.sky_color)
             break
         }
 
-        obj_found.applyMaterial(ray, t)
+        self.materials[obj_found.material].updateRay(ray, t, obj_found)
 
         //self.timer.step("MATERIAL")
     }

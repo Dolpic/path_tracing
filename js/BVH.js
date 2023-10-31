@@ -1,41 +1,14 @@
 import { Bbox } from "./primitives.js"
 
 export function computeBVH(objs){
-    let bbox = Bbox.new()
-    Bbox.getEnglobing(bbox, objs)
-
-    if(objs.length < 2){
-        return {
-            is_leaf: true,
-            objs: objs,
-            bbox: bbox
-        }
-    }
-
+    const bbox = Bbox.getEnglobing(Bbox.new(), objs)
     let leftObjs  = []
     let rightObjs = []
-    if(!split_SAH(objs, leftObjs, rightObjs)){
-        return {
-            is_leaf: true,
-            objs: objs,
-            bbox: bbox
-        }
-    }
 
-    if(leftObjs.length == 0 || rightObjs.length == 0){
-        return {
-            is_leaf: true,
-            objs: leftObjs.length == 0 ? rightObjs : leftObjs,
-            bbox: bbox
-        }
+    if(objs.length <= 2 || !split_SAH(objs, leftObjs, rightObjs)){
+        return [bbox, objs]
     }
-
-    return {
-        is_leaf: false,
-        left:    computeBVH(leftObjs),
-        right:   computeBVH(rightObjs),
-        bbox:    bbox
-    }
+    return [bbox, computeBVH(leftObjs), computeBVH(rightObjs)]
 }
 
 function split_half(objs, left, right){
@@ -44,10 +17,10 @@ function split_half(objs, left, right){
 
     let axis
     let splitValue
-    let lengthX = Math.abs(centersBbox.maxX - centersBbox.minX)
-    let lengthY = Math.abs(centersBbox.maxY - centersBbox.minY)
-    let lengthZ = Math.abs(centersBbox.maxZ - centersBbox.minZ)
-    let max = Math.max(lengthX, lengthY, lengthZ)
+    const lengthX = Math.abs(centersBbox.maxX - centersBbox.minX)
+    const lengthY = Math.abs(centersBbox.maxY - centersBbox.minY)
+    const lengthZ = Math.abs(centersBbox.maxZ - centersBbox.minZ)
+    const max = Math.max(lengthX, lengthY, lengthZ)
     if(max == 0){
         return false
     }
@@ -70,11 +43,10 @@ function split_half(objs, left, right){
             right.push(obj)
         }
     }
-    return true
+    return (left.length != 0 && right.length != 0)
 }
 
 function split_SAH(objs, left, right){
-    //return false
     let bbox = Bbox.new()
     const parentSurfaceArea = Bbox.surfaceArea(Bbox.getEnglobing(bbox, objs))
     Bbox.getEnglobingCenters(bbox, objs)
@@ -82,10 +54,10 @@ function split_SAH(objs, left, right){
     let axis
     let lengthStart
     let lengthEnd
-    let lengthX = Math.abs(bbox.maxX - bbox.minX)
-    let lengthY = Math.abs(bbox.maxY - bbox.minY)
-    let lengthZ = Math.abs(bbox.maxZ - bbox.minZ)
-    let max = Math.max(lengthX, lengthY, lengthZ)
+    const lengthX = Math.abs(bbox.maxX - bbox.minX)
+    const lengthY = Math.abs(bbox.maxY - bbox.minY)
+    const lengthZ = Math.abs(bbox.maxZ - bbox.minZ)
+    const max = Math.max(lengthX, lengthY, lengthZ)
     if(max == 0){
         return false
     }
@@ -111,33 +83,48 @@ function split_SAH(objs, left, right){
     let best_right_candidates = []
     let best_left_candidates = []
 
+    let right_candidates = {
+        objs : [],
+        bbox : Bbox.new()
+    }
+    let left_candidates = {
+        objs : [],
+        bbox : Bbox.new()
+    }
+
 
     for(let i=1; i<nb_split; i++){
+
         let current_split_cost = 0.5
         let current_split_value = lengthStart + i*(lengthEnd - lengthStart)/nb_split 
-        let right_candidates = []
-        let left_candidates = []
+
+        right_candidates.objs = []
+        Bbox.reset(right_candidates.bbox)
+        left_candidates.objs = []
+        Bbox.reset(left_candidates.bbox)
 
         for(let j=0; j<objs.length; j++){
-            let obj = objs[j]
+            const obj = objs[j]
             if(obj.bbox[axis] <= current_split_value){
-                left_candidates.push(obj)
+                left_candidates.objs.push(obj)
+                Bbox.merge(left_candidates.bbox, obj.bbox)
             }else{
-                right_candidates.push(obj)
+                right_candidates.objs.push(obj)
+                Bbox.merge(right_candidates.bbox, obj.bbox)
             }
         }
 
-        current_split_cost += Bbox.surfaceArea(Bbox.getEnglobing(bbox, left_candidates))/parentSurfaceArea * left_candidates.length
-        current_split_cost += Bbox.surfaceArea(Bbox.getEnglobing(bbox, right_candidates))/parentSurfaceArea * right_candidates.length
+        current_split_cost += left_candidates.objs.length* Bbox.surfaceArea(left_candidates.bbox)/parentSurfaceArea
+        current_split_cost += right_candidates.objs.length*Bbox.surfaceArea(right_candidates.bbox)/parentSurfaceArea
 
         if(current_split_cost < min_split_cost){
             min_split_cost = current_split_cost
-            best_right_candidates = [...right_candidates]
-            best_left_candidates = [...left_candidates]
+            best_right_candidates = [...right_candidates.objs]
+            best_left_candidates = [...left_candidates.objs]
         }
     }
 
-    if(cost_no_split < min_split_cost){
+    if(cost_no_split < min_split_cost || best_left_candidates.length == 0 || best_right_candidates.length == 0){
         return false
     }
 
@@ -151,53 +138,15 @@ function split_SAH(objs, left, right){
 }
 
 export function gatherFromBVH(ray, bvh, acc, timer=null){
-
-    //if (timer != null) timer.start()
-
-    //let hit
-    /*if(timer != null){
-        hit = timer.compare([
-            () => {return Bbox.hitRay(bvh.bbox, ray)},
-            () => {return Bbox.hitRay2(bvh.bbox, ray)},
-        ])
-    }else{*/
-    const hit = Bbox.hitRay(bvh.bbox, ray)
-    //}
-
-    //if (timer != null) timer.step()
-
-    if(hit){
-        if(bvh.is_leaf){
-            for(let i=0; i<bvh.objs.length; i++){
-                acc.push(bvh.objs[i])
+    if(Bbox.hitRay(bvh[0], ray)){
+        if(bvh.length == 2){
+            const objs = bvh[1]
+            for(let i=0; i<objs.length; i++){
+                acc.push(objs[i])
             }
         }else{
-            gatherFromBVH(ray, bvh.left, acc)
-            gatherFromBVH(ray, bvh.right, acc)
+            gatherFromBVH(ray, bvh[1], acc, timer)
+            gatherFromBVH(ray, bvh[2], acc,timer)
         }
     }
-
-    //if (timer != null) timer.step()
 }
-
-/*export function gatherFromBVH(ray, bvh, acc, timer=null){
-    if (timer != null) timer.start()
-
-    let queue = [bvh]
-    for(let i=0; i<queue.length; i++){
-        const node = queue[i]
-        const hit = Bbox.hitRay(node.bbox, ray)
-        if(hit){
-            if(node.is_leaf){
-                for(let j=0; j<node.objs.length; j++){
-                    acc.push(node.objs[j])
-                }
-            }else{
-                queue.push(node.left)
-                queue.push(node.right)
-            }
-        }
-    }
-
-    if (timer != null) timer.step()
-}*/

@@ -1,28 +1,33 @@
 import { Vec3, Ray, Color } from "./primitives.js"
 
-export function unSerialize(material){
+export const BxDF = {
+    PerfectDiffuse: 0,
+    LambertianDiffuse: 1,
+    Reflect: 2,
+    Refract: 3,
+    Dielectric: 4
+}
+
+export function deserialize(material){
     let new_bxdf
-    switch(material.BxDF.name){
-        case "perfectDiffuse":
+    switch(material.BxDF.type){
+        case BxDF.PerfectDiffuse:
             new_bxdf = new PerfectDiffuse()
             break
-        case "lambertianDiffuse":
+        case BxDF.LambertianDiffuse:
             new_bxdf = new LambertianDiffuse()
             break
-        case "reflect":
+        case BxDF.Reflect:
             new_bxdf = new Reflect(material.BxDF.granular_factor)
             break
-        case "refract":
+        case BxDF.Refract:
             new_bxdf = new Refract(material.BxDF.eta_from, material.BxDF.eta_to)
             break
-        case "composite":
-            new_bxdf = new Composite()
-            break
-        case "dielectric":
+        case BxDF.Dielectric:
             new_bxdf = new Dielectric(material.BxDF.eta_from, material.BxDF.eta_to)
             break
         default:
-            console.error(`Unknown material : ${material}`)
+            console.error(`Unknown material type : ${material.BxDF.type}`)
     }
     return new Material(new_bxdf, material.color)
 }
@@ -41,7 +46,9 @@ export class Material{
 }
 
 export class PerfectDiffuse{
-    constructor(){this.name="perfectDiffuse"}
+    constructor(){
+        this.type = BxDF.PerfectDiffuse
+    }
     apply(ray, t, obj){
         Ray.moveAt(ray, t)
         let new_dir = Vec3.random_spheric()
@@ -51,7 +58,9 @@ export class PerfectDiffuse{
 }
 
 export class LambertianDiffuse{
-    constructor(){this.name="lambertianDiffuse"}
+    constructor(){
+        this.type = BxDF.LambertianDiffuse
+    }
     apply(ray, t, obj){
         Ray.moveAt(ray, t)
         let normal = obj.normalAt(ray.origin)
@@ -61,7 +70,7 @@ export class LambertianDiffuse{
 
 export class Reflect{
     constructor(granular_factor=0.1){
-        this.name="reflect"
+        this.type = BxDF.Reflect
         this.granular_factor = granular_factor
     }
     apply(ray, t, obj){
@@ -86,7 +95,7 @@ export class Reflect{
 
 export class Refract{
     constructor(eta_from=1, eta_to=1){
-        this.name="refract"
+        this.type = BxDF.Refract
         this.eta_from = eta_from
         this.eta_to = eta_to
     }
@@ -121,7 +130,7 @@ export class Refract{
 
 export class Dielectric{
     constructor(eta_from=1, eta_to=1){
-        this.name="dielectric"
+        this.type = BxDF.Dielectric
         this.eta_from = eta_from
         this.eta_to = eta_to
     }
@@ -163,17 +172,5 @@ export class Dielectric{
 
     reflect(ray, normal, dir_normalized){
         Vec3.sub(ray.direction, Vec3.mulScalar(normal, 2*Vec3.dot(dir_normalized, normal)))
-    }
-}
-
-export class Composite{
-    constructor(material1, material2, probability_1){
-        this.name="composite"
-        this.material1 = material1
-        this.material2 = material2
-        this.probability_1 = probability_1
-    }
-    apply(ray, t, obj){
-        Math.random() < this.threshold ? this.material1.apply(ray, t, obj) : this.material2.apply(ray, t, obj)
     }
 }

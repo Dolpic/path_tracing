@@ -45,7 +45,7 @@ export default class Timer{
         for(let k in this.measures){
             let count = this.measures[k].count
             let time = parseFloat((1000*this.measures[k].total_time/count).toFixed(5))
-            txt += `${k} : ${time} ms (${count} measures) \n`
+            txt += `${k} : ${time} μs (${count} measures) \n`
             if(time < best_time){
                 best = k
                 best_time = time

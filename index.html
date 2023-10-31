@@ -63,7 +63,7 @@
 
             document.global_params = {
                 samples_per_pixel: 5,
-                nb_workers:        12,
+                nb_workers:        10,
                 chunk_size:        100,
                 camera:{
                     fov: 45,
@@ -126,10 +126,12 @@
                 workers.push(new Worker("js/worker.js", {type: "module"}))
             }
 
-            Scenes.loadScene(Scenes.Dragons()).then(shapes => {
+            setProgressMessage("Loading scene ...")
+            Scenes.loadScene(Scenes.Dragons()).then(scene => {
+                setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
-                    w.postMessage({msg:"init", objs:shapes, camera:camera, id:i})
+                    w.postMessage({msg:"init", scene:scene, camera:camera, id:i})
                     const next = getNextChunk()
                     if(next != null){
                         w.postMessage(next)
@@ -152,7 +154,7 @@
                     document.global_state.pixels_computed += result.progress
                     const nb_pixels = document.getElementById("canvas").width*document.getElementById("canvas").height
                     const progress = 100*document.global_state.pixels_computed/nb_pixels
-                    document.getElementById("progress").innerHTML = progress.toFixed(2)+" %"
+                    setProgressMessage(progress.toFixed(2)+" %")
                 }
             }
         }
@@ -185,6 +187,10 @@
                 startY: startY,
                 samples_per_pixel: document.global_params.samples_per_pixel,
             }
+        }
+
+        function setProgressMessage(msg){
+            document.getElementById("progress").innerHTML = msg
         }
     </script>  
 </html>

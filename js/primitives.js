@@ -1,5 +1,4 @@
 export class Ray {
-    constructor(){console.error("Ray has no constructor !")}
 
     static new(origin, direction, color){
         return {
@@ -25,7 +24,6 @@ export class Ray {
 }
 
 export class Vec3 {
-    constructor(){console.error("Vec3 has no constructor !")}
 
     static new(x=0, y=0, z=0){
         return {x:x, y:y, z:z}
@@ -39,6 +37,13 @@ export class Vec3 {
         self.x = other.x
         self.y = other.y
         self.z = other.z
+        return self
+    }
+
+    static set(self, x, y, z){
+        self.x = x
+        self.y = y
+        self.z = z
         return self
     }
 
@@ -131,7 +136,6 @@ export class Vec3 {
 }
 
 export class Color{
-    constructor(){console.error("Color has no constructor !")}
 
     static new(r=0, g=0, b=0, a=1){
         return {r:r, g:g, b:b, a:a}
@@ -190,28 +194,44 @@ export class Color{
 export class Bbox{
 
     static fromMinMax(self, minX, maxX, minY, maxY, minZ, maxZ){
-        self.minX = minX,
-        self.maxX = maxX,
-        self.minY = minY,
-        self.maxY = maxY,
-        self.minZ = minZ,
-        self.maxZ = maxZ,
-        self.center = Vec3.new((maxX+minX)/2, (maxY+minY)/2, (maxZ+minZ)/2)
-        self.diagonal = Vec3.new( maxX-minX, maxY-minY, maxZ-minZ)
+        self.minX = minX
+        self.maxX = maxX
+        self.minY = minY
+        self.maxY = maxY
+        self.minZ = minZ
+        self.maxZ = maxZ
+        Vec3.set(self.center, (self.maxX+self.minX)/2, (self.maxY+self.minY)/2, (self.maxZ+self.minZ)/2)
         return self
     }
 
     static new(p1=null, p2=null){
-        if(p1 == null) p1 = Vec3.new(0,0,0)
-        if(p2 == null) p2 = Vec3.new(0,0,0)
-        return Bbox.fromMinMax({},
-            Math.min(p1.x, p2.x),
-            Math.max(p1.x, p2.x),
-            Math.min(p1.y, p2.y),
-            Math.max(p1.y, p2.y),
-            Math.min(p1.z, p2.z),
-            Math.max(p1.z, p2.z),
-        )
+        const self = {
+            center: Vec3.new(),
+            diagonal: Vec3.new()
+        }
+        if(p1 == null || p2 == null){
+            return Bbox.reset(self)
+        }else{
+            return Bbox.fromMinMax(self,
+                Math.min(p1.x, p2.x),
+                Math.max(p1.x, p2.x),
+                Math.min(p1.y, p2.y),
+                Math.max(p1.y, p2.y),
+                Math.min(p1.z, p2.z),
+                Math.max(p1.z, p2.z),
+            )
+        }
+    }
+
+    static reset(self){
+        self.minX = Infinity
+        self.minY = Infinity
+        self.minZ = Infinity
+        self.maxX = -Infinity
+        self.maxY = -Infinity
+        self.maxZ = -Infinity
+        Vec3.set(self.center, 0,0,0)
+        return self
     }
 
     static getEnglobingCenters(self, objs){
@@ -252,34 +272,25 @@ export class Bbox{
         return Bbox.fromMinMax(self, minX, maxX, minY, maxY, minZ, maxZ)
     }
 
-
-    static hitRay(bbox, ray){
-
-        const xInverse = 1 / ray.direction.x
-        let tNearX = (bbox.minX - ray.origin.x) * xInverse
-        let tFarX  = (bbox.maxX - ray.origin.x) * xInverse
-        if(tNearX > tFarX){
-            [tNearX, tFarX] = [tFarX, tNearX]
-        }
-
-        const yInverse = 1 / ray.direction.y
-        let tNearY = (bbox.minY - ray.origin.y) * yInverse
-        let tFarY  = (bbox.maxY - ray.origin.y) * yInverse
-        if(tNearY > tFarY){
-            [tNearY, tFarY] = [tFarY, tNearY]
-        }
-
-        const zInverse = 1 / ray.direction.z
-        let tNearZ = (bbox.minZ - ray.origin.z) * zInverse
-        let tFarZ  = (bbox.maxZ - ray.origin.z) * zInverse
-        if(tNearZ > tFarZ){
-            [tNearZ, tFarZ] = [tFarZ, tNearZ]
-        }
-
-        return Math.max(tNearX, tNearY, tNearZ) < Math.min(tFarX, tFarY, tFarZ)
+    static merge(self, other){
+        if(other.minX < self.minX) self.minX = other.minX
+        if(other.maxX > self.maxX) self.maxX = other.maxX
+        if(other.minY < self.minY) self.minY = other.minY
+        if(other.maxY > self.maxY) self.maxY = other.maxY
+        if(other.minZ < self.minZ) self.minZ = other.minZ
+        if(other.maxZ > self.maxZ) self.maxZ = other.maxZ
+        Vec3.set(self.center, (self.maxX+self.minX)/2, (self.maxY+self.minY)/2, (self.maxZ+self.minZ)/2)
+        return self
     }
 
-    /*static hitRay(bbox, ray){
+    static surfaceArea(self){
+        const diag_x = self.maxX-self.minX
+        const diag_y = self.maxY-self.minY
+        const diag_z = self.maxZ-self.minZ
+        return 2* (diag_x * diag_y + diag_x * diag_z + diag_y * diag_z)
+    }
+
+    static hitRay(bbox, ray){
         let min
         let max
 
@@ -300,31 +311,27 @@ export class Bbox{
         const tFarY  = (bbox.maxY - ray.origin.y) * yInverse
 
         if(tNearY > tFarY){
-            min = min < tFarY ? min : tFarY
-            max = max > tNearY ? max : tNearY
+            min = min < tFarY  ? tFarY  : min
+            max = max > tNearY ? tNearY : max
         }else{
-            min = min < tNearY ? min : tNearY
-            max = max > tFarY ? max : tFarY
+            min = min < tNearY ? tNearY : min
+            max = max > tFarY  ? tFarY  : max
         }
 
-        //if(max < min) return false
+        if(max < min) return false
 
         const zInverse = 1 / ray.direction.z
         const tNearZ = (bbox.minZ - ray.origin.z) * zInverse
         const tFarZ  = (bbox.maxZ - ray.origin.z) * zInverse
 
         if(tNearZ > tFarZ){
-            min = min < tFarZ ? min : tFarZ
-            max = max > tNearZ ? max : tNearZ
+            min = min < tFarZ  ? tFarZ  : min
+            max = max > tNearZ ? tNearZ : max
         }else{
-            min = min < tNearZ ? min : tNearZ
-            max = max > tFarZ ? max : tFarZ
+            min = min < tNearZ ? tNearZ : min
+            max = max > tFarZ  ? tFarZ  : max
         }
 
         return min < max
-    }*/
-
-    static surfaceArea(self){
-        return 2* (self.diagonal.x * self.diagonal.y + self.diagonal.x * self.diagonal.z + self.diagonal.y * self.diagonal.z)
     }
 }

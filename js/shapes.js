@@ -1,25 +1,24 @@
 import { Bbox, Vec3 } from "./primitives.js"
-import { unSerialize as material_unSerialize} from "./materials.js";
 
-export function unSerialize(shp){
-    let new_shp
-    switch(shp.name){
-        case "Sphere":
-            new_shp = Sphere.unSerialize(shp)
-            break
-        case "Triangle":
-            new_shp = Triangle.unSerialize(shp)
-            break
+export const Shapes = {
+    Sphere:0,
+    Triangle:1
+}
+
+export function deserialize(shp){
+    switch(shp.type){
+        case Shapes.Sphere:
+            return Sphere.deserialize(shp)
+        case Shapes.Triangle:
+            return Triangle.deserialize(shp)
         default:
-            console.error(`Unknown shape : ${shp.name}`)
+            console.error(`Unknown shape type : ${shp.type}`)
     }
-    new_shp.material = material_unSerialize(shp.material)
-    return new_shp
 }
 
 export class Sphere{
     constructor(center, radius, material){
-        this.name = "Sphere"
+        this.type = Shapes.Sphere
         this.center = center
         this.radius = radius
         this.bbox = Bbox.new( 
@@ -29,7 +28,7 @@ export class Sphere{
         this.material = material
     }
 
-    static unSerialize(sphere){
+    static deserialize(sphere){
         return new Sphere(sphere.center, sphere.radius, sphere.material)
     }
 
@@ -54,15 +53,11 @@ export class Sphere{
     normalAt(position){
         return Vec3.normalize(Vec3.sub(Vec3.clone(position), this.center))
     }
-
-    applyMaterial(ray, t){
-        return this.material.updateRay(ray, t, this)
-    }
 }
 
 export class Triangle{
     constructor(p1, p2, p3, material, p1_normal=null, p2_normal=null, p3_normal=null){
-        this.name = "Triangle"
+        this.type = Shapes.Triangle
         this.p1 = p1
         this.p2 = p2
         this.p3 = p3
@@ -72,8 +67,6 @@ export class Triangle{
         this.n23 = Vec3.sub( Vec3.clone(this.p3), this.p2)
         this.n31 = Vec3.sub( Vec3.clone(this.p1), this.p3)
         this.normal = Vec3.normalize(Vec3.cross( Vec3.clone(this.n12), this.n23))
-
-        this.area = Vec3.norm(Vec3.cross( Vec3.mulScalar(Vec3.clone(this.n31), -1), this.n12 ))
 
         Vec3.cross(this.n12, this.normal)
         Vec3.cross(this.n23, this.normal)
@@ -105,7 +98,7 @@ export class Triangle{
         }
     }
 
-    static unSerialize(triangle){
+    static deserialize(triangle){
         return new Triangle(
             triangle.p1, 
             triangle.p2, 
@@ -153,10 +146,6 @@ export class Triangle{
         }else{
             return Vec3.clone(this.normal)
         }
-    }
-
-    applyMaterial(ray, t){
-        return this.material.updateRay(ray, t, this)
     }
 }
 
