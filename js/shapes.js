@@ -1,5 +1,7 @@
 import { Bbox, Vec3 } from "./primitives.js"
 
+const T_MIN = 0.0001
+
 export const Shapes = {
     Sphere:0,
     Triangle:1
@@ -43,8 +45,13 @@ export class Sphere{
         const c = Vec3.dot(diff, diff) - this.radius*this.radius
         const discriminant = b*b - 4*a*c
         if(discriminant >= 0){
-            const t = (-b-Math.sqrt(discriminant))/(2*a)
-            return t > 0.0001 ? t : Infinity
+            let t = (-b-Math.sqrt(discriminant))/(2*a)
+            if(t > T_MIN){
+                return t
+            }else{
+                t = (-b+Math.sqrt(discriminant))/(2*a)
+                return t > T_MIN ? t : Infinity
+            }
         }else{
             return Infinity
         }
@@ -115,7 +122,7 @@ export class Triangle{
 
     hit(ray){
         const t = -(Vec3.dot(this.normal, ray.origin) + this.d) / Vec3.dot(this.normal, ray.direction)
-        if(t < 0.001){
+        if(t < T_MIN){
             return Infinity
         }
 

@@ -90,9 +90,9 @@ export class Vec3 {
     }
 
     static cross(self, other){
-        let tmp_x = self.x
-        let tmp_y = self.y
-        let tmp_z = self.z
+        const tmp_x = self.x
+        const tmp_y = self.y
+        const tmp_z = self.z
         self.x = tmp_y*other.z - tmp_z*other.y
         self.y = tmp_z*other.x - tmp_x*other.z
         self.z = tmp_x*other.y - tmp_y*other.x
@@ -112,7 +112,7 @@ export class Vec3 {
     }
 
     static normalize(self){
-        let norm = Vec3.norm(self)
+        const norm = Vec3.norm(self)
         self.x /= norm
         self.y /= norm
         self.z /= norm

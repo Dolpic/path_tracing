@@ -127,7 +127,7 @@
             }
 
             setProgressMessage("Loading scene ...")
-            Scenes.loadScene(Scenes.Dragons()).then(scene => {
+            Scenes.loadScene(Scenes.Teapot()).then(scene => {
                 setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)

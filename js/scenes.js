@@ -18,15 +18,13 @@ export default class Scenes{
         return {
             materials:[
                 new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1)),
-                new Material(new Reflect(0.2), Color.new(0.4, 0.8, 0.3, 1)),
-                new Material(new Refract(1, 1.5),     Color.new(0.8, 0.8, 1, 1)),
-                new Material(new Dielectric(1, 1.5),  Color.new(0.8, 0.8, 1, 1)),
-                new Material(new Reflect(0), Color.new(0.4, 0.8, 0.3, 1))
+                new Material(new Dielectric(1, 1.5),  Color.new(0.9, 0.9, 0.9, 1)),
+                new Material(new LambertianDiffuse(),  Color.new(0.1, 0.9, 0, 1)),
             ],
             objects:[
                 {
                     file: "teapot/teapot_smooth",
-                    material: 4,
+                    material: 1,
                     transformMatrix: (new Matrix()).transform([0, -1, -4], [0,0,0], [0.5,0.5,0.5])
                 }
             ],
@@ -57,11 +55,13 @@ export default class Scenes{
                 new Sphere( Vec3.new(0.3, -0.28, -2.7), 0.1,  0),
 
 
-                new Sphere( Vec3.new(-0.7, -0.86, -3), 0.15,  2),
-                new Sphere( Vec3.new(0.7, -0.86, -3), 0.15,   2),
+                new Sphere( Vec3.new(-0.7, -0.86, -3), 0.15,  1),
+                new Sphere( Vec3.new(0.7, -0.86, -3), 0.15,   1),
 
-                new Sphere( Vec3.new(-0.7, -0.56, -3), 0.15,  3),
-                new Sphere( Vec3.new(0.7, -0.56, -3), 0.15,   3),
+                new Sphere( Vec3.new(-0.7, -0.56, -3), 0.15,  1),
+                new Sphere( Vec3.new(0.7, -0.56, -3), 0.15,   1),
+
+                //new Sphere( Vec3.new(0,   -0.26, -6.5), 3*0.15,    6),
             ],
         }
     }
@@ -73,22 +73,23 @@ export default class Scenes{
                 new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1)),
                 new Material(new Reflect(0),          Color.new(0.4, 0.8, 0.3, 1)),
                 new Material(new Refract(1, 1.5),     Color.new(0.8, 0.8, 1, 1)),
-                new Material(new Dielectric(1, 1.5),  Color.new(0.8, 0.8, 1, 1))
+                new Material(new Dielectric(1, 1.5),  Color.new(0.8, 0.8, 1, 1)),
+                new Material(new Dielectric(1, 1.5),  Color.new(1, 1, 1, 1))
             ],
             objects:[
-                {
-                    file: "dragon/dragon_simple",
+                /*{
+                    file: "dragon/dragon_very_simple",
                     material: 0,
                     transformMatrix: (new Matrix()).transform([-1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
                 },
                 {
-                    file: "dragon/dragon_simple",
+                    file: "dragon/dragon_very_simple",
                     material: 1,
                     transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [0.2,0.2,0.2])
-                },
+                },*/
                 {
-                    file: "dragon/dragon_simple",
-                    material: 3,
+                    file: "teapot/teapot_smooth",
+                    material: 4,
                     transformMatrix: (new Matrix()).transform([1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
                 },
                 /*{

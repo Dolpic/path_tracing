@@ -79,7 +79,7 @@ function render(params){
     }
 }
 
-function trace(ray, max_iterations=50){
+function trace(ray, max_iterations=100){
     for(let i=0; i<max_iterations; i++){
         let t = Infinity
         let obj_found
