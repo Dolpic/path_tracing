@@ -23,6 +23,72 @@ export class Ray {
     }
 }
 
+export class Complex {
+    static new(real, img){
+        return {r:real, i:img}
+    }
+
+    static clone(c){
+        return {r:c.r, i:c.i}
+    }
+
+    static fromReal(real){
+        return Complex.new(real, 0)
+    }
+
+    static add(self, other){
+        self.r = self.r + other.r
+        self.i = self.i + other.i
+        return self
+    }
+
+    static sub(self, other){
+        self.r = self.r - other.r
+        self.i = self.i - other.i
+        return self
+    }
+
+    static mul(self, other){
+        const selfR = self.r
+        self.r = selfR * other.r - self.i * other.i
+        self.i = selfR * other.i + self.i * other.r
+        return self
+    }
+
+    static div(self, other){
+        const denominator = other.r*other.r + other.i*other.i
+        const selfR = self.r
+        self.r = (selfR*other.r + self.i*other.i) / denominator
+        self.i = (other.r*self.i - selfR*other.i) / denominator
+        return self
+    }
+
+    static sqrt(self){
+        if(self.i == 0){
+            if(self.r > 0){
+                self.r = Math.sqrt(self.r)
+            }else{
+                self.r = 0
+                self.i = Math.sqrt(-self.r)
+            }
+        }else{
+            const r = self.r
+            const modulus = Complex.modulus(self)
+            self.r = Math.sqrt( (r + modulus)/2 )
+            self.i = Math.sqrt( (-r + modulus)/2 ) * Math.sign(self.i)
+        }
+        return self
+    }
+
+    static modulus(self){
+       return Math.sqrt(Complex.modulusSquared(self))
+    }
+
+    static modulusSquared(self){
+        return self.r*self.r + self.i*self.i
+    }
+}
+
 export class Vec3 {
 
     static new(x=0, y=0, z=0){
@@ -170,6 +236,14 @@ export class Color{
         self.g *= other.g
         self.b *= other.b
         self.a *= other.a
+        return self
+    }
+
+    static mulScalar(self, scalar, with_alpha=false){
+        self.r *= scalar
+        self.g *= scalar
+        self.b *= scalar
+        if(with_alpha) self.a *= scalar
         return self
     }
 

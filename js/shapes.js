@@ -95,7 +95,12 @@ export class Triangle{
             this.p1_normal = Vec3.normalize(p1_normal)
             this.p2_normal = Vec3.normalize(p2_normal)
             this.p3_normal = Vec3.normalize(p3_normal)
+            this.projection_axis = 'Z'
             this.interpolate_denominator = (this.p2.y-this.p3.y)*(this.p1.x-this.p3.x) + (this.p3.x-this.p2.x)*(this.p1.y-this.p3.y)
+            if(this.interpolate_denominator == 0){ // If the triangle can't be projection on Z
+                this.projection_axis = 'Y'
+                this.interpolate_denominator = (this.p2.z-this.p3.z)*(this.p1.x-this.p3.x) + (this.p3.x-this.p2.x)*(this.p1.z-this.p3.z)
+            }
         }else{
             this.interpolated_normals = false
             this.p1_normal = null
@@ -139,9 +144,15 @@ export class Triangle{
     normalAt(position){
         if(this.interpolated_normals){
             // https://en.wikipedia.org/wiki/Barycentric_coordinate_system
-            // TODO Handle the case where the triangle is in the Z plane
-            const w_1 = ((this.p2.y-this.p3.y)*(position.x-this.p3.x)+(this.p3.x-this.p2.x)*(position.y-this.p3.y))/this.interpolate_denominator
-            const w_2 = ((this.p3.y-this.p1.y)*(position.x-this.p3.x)+(this.p1.x-this.p3.x)*(position.y-this.p3.y))/this.interpolate_denominator
+            let w_1
+            let w_2
+            if(this.projection_axis == 'Z'){
+                w_1 = ((this.p2.y-this.p3.y)*(position.x-this.p3.x)+(this.p3.x-this.p2.x)*(position.y-this.p3.y))/this.interpolate_denominator
+                w_2 = ((this.p3.y-this.p1.y)*(position.x-this.p3.x)+(this.p1.x-this.p3.x)*(position.y-this.p3.y))/this.interpolate_denominator
+            }else{
+                w_1 = ((this.p2.z-this.p3.z)*(position.x-this.p3.x)+(this.p3.x-this.p2.x)*(position.z-this.p3.z))/this.interpolate_denominator
+                w_2 = ((this.p3.z-this.p1.z)*(position.x-this.p3.x)+(this.p1.x-this.p3.x)*(position.z-this.p3.z))/this.interpolate_denominator
+            }
             const w_3 = 1 - w_1 - w_2
 
             const result = Vec3.new(

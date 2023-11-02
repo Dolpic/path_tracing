@@ -108,7 +108,7 @@ function trace(ray, max_iterations=100){
             break
         }
 
-        self.materials[obj_found.material].updateRay(ray, t, obj_found)
+        self.materials[obj_found.material].apply(ray, t, obj_found)
 
         //self.timer.step("MATERIAL")
     }

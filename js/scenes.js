@@ -1,7 +1,7 @@
 import { Sphere } from "./shapes.js"
 import Objects from "./Objects.js"
-import { Material, LambertianDiffuse, Reflect, Refract, Dielectric} from "./materials.js"
-import { Vec3, Color } from "./primitives.js"
+import { LambertianDiffuse, Reflect, Refract, Dielectric, Conductor} from "./materials.js"
+import { Vec3, Color, Complex } from "./primitives.js"
 import Matrix from "./Matrix.js"
 
 export default class Scenes{
@@ -17,13 +17,14 @@ export default class Scenes{
     static Teapot(){
         return {
             materials:[
-                new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1)),
-                new Material(new Dielectric(1, 1.5),  Color.new(0.9, 0.9, 0.9, 1)),
-                new Material(new LambertianDiffuse(),  Color.new(0.1, 0.9, 0, 1)),
+                new LambertianDiffuse(Color.new(0.8, 0.4, 0.3, 1)),
+                new Dielectric(Color.new(0.9, 0.9, 0.9, 1), 1, 1.5),
+                new LambertianDiffuse(Color.new(1,0,0,1)),
+                new Conductor(Color.new(0.9, 0.6, 0.1, 1), Complex.fromReal(1), Complex.new(0.2, 3))
             ],
             objects:[
                 {
-                    file: "teapot/teapot_smooth",
+                    file: "teapot/teapot_smooth_corrected",
                     material: 1,
                     transformMatrix: (new Matrix()).transform([0, -1, -4], [0,0,0], [0.5,0.5,0.5])
                 }
@@ -70,11 +71,11 @@ export default class Scenes{
 
         return {
             materials:[
-                new Material(new LambertianDiffuse(), Color.new(0.8, 0.4, 0.3, 1)),
-                new Material(new Reflect(0),          Color.new(0.4, 0.8, 0.3, 1)),
-                new Material(new Refract(1, 1.5),     Color.new(0.8, 0.8, 1, 1)),
-                new Material(new Dielectric(1, 1.5),  Color.new(0.8, 0.8, 1, 1)),
-                new Material(new Dielectric(1, 1.5),  Color.new(1, 1, 1, 1))
+                new LambertianDiffuse(Color.new(0.8, 0.4, 0.3, 1)),
+                new Reflect(Color.new(0.4, 0.8, 0.3, 1), 0),
+                new Refract(Color.new(0.8, 0.8, 1, 1), 1, 1.5),
+                new Dielectric(Color.new(0.8, 0.8, 1, 1), 1, 1.5),
+                new Dielectric(Color.new(1, 1, 1, 1), 1, 1.5),
             ],
             objects:[
                 /*{
