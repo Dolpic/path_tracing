@@ -72,13 +72,11 @@ export default class Scenes{
         return {
             materials:[
                 new LambertianDiffuse(Color.new(0.8, 0.4, 0.3, 1)),
-                new Reflect(Color.new(0.4, 0.8, 0.3, 1), 0),
-                new Refract(Color.new(0.8, 0.8, 1, 1), 1, 1.5),
-                new Dielectric(Color.new(0.8, 0.8, 1, 1), 1, 1.5),
-                new Dielectric(Color.new(1, 1, 1, 1), 1, 1.5),
+                new Dielectric(Color.new(0.9, 0.9, 0.9, 1), 1, 1.5),
+                new Conductor(Color.new(0.9, 0.6, 0.1, 1), Complex.fromReal(1), Complex.new(0.2, 3))
             ],
             objects:[
-                /*{
+                {
                     file: "dragon/dragon_very_simple",
                     material: 0,
                     transformMatrix: (new Matrix()).transform([-1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
@@ -87,10 +85,10 @@ export default class Scenes{
                     file: "dragon/dragon_very_simple",
                     material: 1,
                     transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [0.2,0.2,0.2])
-                },*/
+                },
                 {
-                    file: "teapot/teapot_smooth",
-                    material: 4,
+                    file: "dragon/dragon_very_simple",
+                    material: 2,
                     transformMatrix: (new Matrix()).transform([1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
                 },
                 /*{
