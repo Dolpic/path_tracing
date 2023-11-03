@@ -13,8 +13,7 @@ export default class Camera{
         this.half_viewport_height = this.viewport_height/2
         this.minus_focal_length   = -this.focal_length
 
-        this.start_color = Color.new(1,1,1,1)
-        this.ray = Ray.new(Vec3.new(0,0,0), Vec3.new(0,0,0), Color.clone(this.start_color))
+        this.ray = Ray.new(Vec3.new(0,0,0), Vec3.new(0,0,0))
     }
 
     static getRay(camera, u, v){
@@ -22,7 +21,7 @@ export default class Camera{
         camera.ray.direction.y = -v*camera.viewport_height  + camera.half_viewport_height
         camera.ray.direction.z = camera.minus_focal_length
         Vec3.equal(camera.ray.origin, camera.default_position)
-        Color.equal(camera.ray.color, camera.start_color)
+        Ray.resetThroughput(camera.ray)
 
         if(camera.lensRadius > 0 && camera.focalDistance > 0){
             let lensU = Math.random()

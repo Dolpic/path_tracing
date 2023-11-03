@@ -63,6 +63,7 @@ export class Sphere{
 }
 
 export class Triangle{
+    // TODO error if two vertices are the same
     constructor(p1, p2, p3, material, p1_normal=null, p2_normal=null, p3_normal=null){
         this.type = Shapes.Triangle
         this.p1 = p1
@@ -126,7 +127,11 @@ export class Triangle{
     }
 
     hit(ray){
-        const t = -(Vec3.dot(this.normal, ray.origin) + this.d) / Vec3.dot(this.normal, ray.direction)
+        const denominator = Vec3.dot(this.normal, ray.direction)
+        if(denominator == 0){
+            return Infinity
+        }
+        const t = -(Vec3.dot(this.normal, ray.origin) + this.d) / denominator
         if(t < T_MIN){
             return Infinity
         }

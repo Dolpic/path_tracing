@@ -33,12 +33,11 @@ export class PerfectDiffuse{
         this.type = BxDF.PerfectDiffuse
         this.color = color
     }
-    apply(ray, t, obj){
-        Ray.moveAt(ray, t)
+    apply(ray, obj){
         const normal = obj.normalAt(ray.origin)
         const sampled_dir = Vec3.random_spheric()
         ray.direction = Vec3.dot(normal, sampled_dir) < 0 ? sampled_dir : Vec3.mulScalar(sampled_dir, -1)
-        Color.mul(ray.color, this.color)
+        return this.color
     }
 }
 
@@ -47,12 +46,11 @@ export class LambertianDiffuse{
         this.type = BxDF.LambertianDiffuse
         this.color = color
     }
-    apply(ray, t, obj){
-        Ray.moveAt(ray, t)
+    apply(ray, obj){
         const normal = obj.normalAt(ray.origin)
         const sampled_dir = Vec3.random_spheric(ray.direction)
         ray.direction = Vec3.add(normal, Vec3.normalize(sampled_dir))
-        Color.mul(ray.color, this.color)
+        return this.color
     }
 }
 
@@ -62,8 +60,7 @@ export class Reflect{
         this.color = color
         this.granular_factor = granular_factor
     }
-    apply(ray, t, obj){
-        Ray.moveAt(ray, t)
+    apply(ray, obj){
         let normal = obj.normalAt(ray.origin)
         let reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(ray.direction, normal) )
 
@@ -79,7 +76,7 @@ export class Reflect{
         }else{
             Vec3.sub(ray.direction, reflectDir)
         }
-        Color.mul(ray.color, this.color)
+        return this.color
     }
 }
 
@@ -90,8 +87,7 @@ export class Refract{
         this.eta_from = eta_from
         this.eta_to = eta_to
     }
-    apply(ray, t, obj){
-        Ray.moveAt(ray, t)
+    apply(ray, obj){
         const normal = obj.normalAt(ray.origin)
         const isFromOutside = Vec3.dot(normal, ray.direction) < 0
         const eta_ratio = isFromOutside ? this.eta_from/this.eta_to : this.eta_to/this.eta_from
@@ -110,7 +106,7 @@ export class Refract{
             let parallel = Vec3.mulScalar(normal, -Math.sqrt( 1-Vec3.norm_squared(perpendicular)  ))
             ray.direction = Vec3.add(perpendicular, parallel)
         }
-        Color.mul(ray.color, this.color)
+        return this.color
     }
 
     schlick_approx(cos, eta_from, eta_to) {
@@ -129,8 +125,7 @@ export class Dielectric{
         this.eta_to = eta_to
     }
 
-    apply(ray, t, obj){
-        Ray.moveAt(ray, t)
+    apply(ray, obj){
         Vec3.normalize(ray.direction)
         let eta_ratio
         let normal = obj.normalAt(ray.origin)
@@ -159,7 +154,7 @@ export class Dielectric{
                 ray.direction = Vec3.add(perpendicular, parallel)
             }
         }
-        Color.mul(ray.color, this.color)
+        return this.color
     }
 
     cos_theta_from_snell_law(eta_ratio, cos_incident){
@@ -186,8 +181,7 @@ export class Conductor{
         this.eta_to = eta_to
     }
 
-    apply(ray, t, obj){
-        Ray.moveAt(ray, t)
+    apply(ray, obj){
         Vec3.normalize(ray.direction)
         let eta_ratio
         let normal = obj.normalAt(ray.origin)
@@ -205,8 +199,7 @@ export class Conductor{
         const r = this.fresnel_reflectance(eta_ratio, cos_incident, cos_transmitted)
 
         this.reflect(ray, normal, ray.direction)
-        Color.mul(ray.color, this.color)
-        Color.mulScalar(ray.color, r)
+        return Color.mul( Color.clone(this.color), r)
     }
 
     cos_theta_from_snell_law(eta_ratio, cos_incident){

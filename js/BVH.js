@@ -146,7 +146,28 @@ export function gatherFromBVH(ray, bvh, acc, timer=null){
             }
         }else{
             gatherFromBVH(ray, bvh[1], acc, timer)
-            gatherFromBVH(ray, bvh[2], acc,timer)
+            gatherFromBVH(ray, bvh[2], acc, timer)
         }
     }
+}
+
+export function isOccluded(ray, bvh, tMax){
+    if(Bbox.hitRay(bvh[0], ray)){
+        if(bvh.length == 2){
+            const objs = bvh[1]
+            for(let i=0; i<objs.length; i++){
+                if(objs[i].hit(ray) < tMax){
+                    return true
+                }else if(objs[i].hit(ray) != Infinity){
+                    console.log(objs[i])
+                }
+            }
+        }else{
+            return (
+                isOccluded(ray, bvh[1], tMax) ||
+                isOccluded(ray, bvh[2], tMax)
+            )
+        }
+    }
+    return false
 }

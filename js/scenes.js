@@ -3,6 +3,7 @@ import Objects from "./Objects.js"
 import { LambertianDiffuse, Reflect, Refract, Dielectric, Conductor} from "./materials.js"
 import { Vec3, Color, Complex } from "./primitives.js"
 import Matrix from "./Matrix.js"
+import {PointLight} from "./Lights.js"
 
 export default class Scenes{
 
@@ -10,7 +11,8 @@ export default class Scenes{
         const objs = await Objects.loadObjects(scene.objects)
         return {
             shapes: [...scene.shapes, ...objs.flat()],
-            materials: scene.materials
+            materials: scene.materials,
+            lights: scene.lights
         }
     }
 
@@ -64,6 +66,9 @@ export default class Scenes{
 
                 //new Sphere( Vec3.new(0,   -0.26, -6.5), 3*0.15,    6),
             ],
+            lights: [
+                new PointLight(Vec3.new(0, 7, -5), Color.new(0.5,0.5,0.5,1))
+            ]
         }
     }
 
@@ -76,29 +81,32 @@ export default class Scenes{
                 new Conductor(Color.new(0.9, 0.6, 0.1, 1), Complex.fromReal(1), Complex.new(0.2, 3))
             ],
             objects:[
-                {
+               /* {
                     file: "dragon/dragon_very_simple",
                     material: 0,
                     transformMatrix: (new Matrix()).transform([-1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
-                },
+                },*/
                 {
                     file: "dragon/dragon_very_simple",
                     material: 1,
                     transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [0.2,0.2,0.2])
                 },
-                {
+                /*{
                     file: "dragon/dragon_very_simple",
                     material: 2,
                     transformMatrix: (new Matrix()).transform([1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
-                },
+                },*/
                 /*{
-                    file: "dragon/dragon_simple",
+                    file: "dragon/dragon_very_simple",
                     material: dielectric,
                     transformMatrix: (new Matrix()).transform([2, -1, -4], [0,0,0], [0.5,0.5,0.5])
                 },*/
             ],
             shapes:[
                 new Sphere( Vec3.new(0,   -80.98, -4), 80, 0),
+            ],
+            lights:[
+                new PointLight(Vec3.new(0, 7, -5), Color.new(1,1,1,1))
             ]
         }
     }

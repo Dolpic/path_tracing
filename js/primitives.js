@@ -1,11 +1,19 @@
 export class Ray {
 
-    static new(origin, direction, color){
+    static new(origin, direction){
         return {
             origin:origin, 
             direction:direction,
-            color:color
+            color:Color.new()
         }
+    }
+
+    static resetThroughput(self){
+        Color.equal(self.color, Color.ZERO)
+    }
+
+    static addToThroughput(self, weight, color){
+        Color.add(self.color, Color.mul( Color.clone(color), weight))
     }
 
     static moveAt(ray, t){
@@ -20,7 +28,7 @@ export class Ray {
             ray.direction.y * t,
             ray.direction.z * t
         )
-    }
+    } 
 }
 
 export class Complex {
@@ -223,11 +231,28 @@ export class Color{
         self.a = other.a
     }
 
+    static isNearZero(self){
+        return (
+            Math.abs(self.r) < 0.0001 && 
+            Math.abs(self.g) < 0.0001 && 
+            Math.abs(self.b) < 0.0001 && 
+            Math.abs(self.a) < 0.0001
+        )
+    }
+
     static add(self, other){
         self.r += other.r
         self.g += other.g
         self.b += other.b
         self.a += other.a
+        return self
+    }
+
+    static addScalar(self, other, with_alpha=false){
+        self.r += other
+        self.g += other
+        self.b += other
+        if(with_alpha) self.a += other
         return self
     }
 
@@ -262,7 +287,7 @@ export class Color{
         return self
     }
 
-    static ZERO = {r:0, g:0, b:0, a:0}
+    static ZERO = {r:0, g:0, b:0, a:1}
 }
 
 export class Bbox{

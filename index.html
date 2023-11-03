@@ -42,6 +42,11 @@
                     <li>General dielectric model for smooth surfaces, with reflectance derived from the <a href="https://en.wikipedia.org/wiki/Fresnel_equations">Fresnel equations</a></li>
                     <li>General conductor and semiconductor reflection model for smooth surfaces, derived from the <a href="https://en.wikipedia.org/wiki/Fresnel_equations">Fresnel equations</a></li>
                 </ul>
+                <li>Lights including</li>
+                <ul>
+                    <li>At infinity, providing lighting for rays that do not collide with any object</li>
+                    <li>Point lights, uniformly casting light in all directions</li>
+                </ul>
             </ul>
         </div>
     </body>
@@ -128,7 +133,7 @@
             }
 
             setProgressMessage("Loading scene ...")
-            Scenes.loadScene(Scenes.Dragons()).then(scene => {
+            Scenes.loadScene(Scenes.Teapot()).then(scene => {
                 setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)

@@ -1,24 +1,26 @@
 import Camera from "./Camera.js"
-import { Color } from "./primitives.js";
+import { Color, Ray, Vec3 } from "./primitives.js";
 import Timer from "./Timer.js";
 import { deserialize } from "./shapes.js";
-import { computeBVH, gatherFromBVH } from "./BVH.js";
+import { computeBVH, gatherFromBVH, isOccluded } from "./BVH.js";
 import { deserialize as deserialize_mat } from "./materials.js";
+import { deserialize as deserialize_light, sampleLight } from "./Lights.js";
 
 onmessage = e => {
     switch(e.data.msg){
         case "init":
-            return init(e.data.id, e.data.scene.shapes, e.data.scene.materials, e.data.camera)
+            return init(e.data.id, e.data.scene, e.data.camera)
         case "start":
             return postMessage(render(e.data))
     }
 }
 
-function init(id, shapes, materials, camera){
+function init(id, scene, camera){
     self.timer     = new Timer()
     self.id        = id
-    self.materials = materials.map(mat=>deserialize_mat(mat))
-    self.bvh       = computeBVH(shapes.map(obj=>deserialize(obj)), self.timer)
+    self.materials = scene.materials.map(mat=>deserialize_mat(mat))
+    self.lights    = scene.lights.map(light=> deserialize_light(light))
+    self.bvh       = computeBVH(scene.shapes.map(obj=>deserialize(obj)), self.timer)
     self.camera    = camera
     self.sky_color = Color.new(0.7, 0.7, 1, 1)
 }
@@ -80,35 +82,57 @@ function render(params){
 }
 
 function trace(ray, max_iterations=100){
-    for(let i=0; i<max_iterations; i++){
+    let path_weight = Color.new(1,1,1,1)
+    for(let i=0; i<max_iterations && !Color.isNearZero(path_weight); i++){
         let t = Infinity
         let obj_found
 
         //self.timer.start()
 
-        let considered_objs = []
-        gatherFromBVH(ray, self.bvh, considered_objs, self.timer)
+        { // Find intersection
+            let considered_objs = []
+            gatherFromBVH(ray, self.bvh, considered_objs, self.timer)
 
 
-        //self.timer.step("BVH")
+            //self.timer.step("BVH")
 
-        for(let i=0; i<considered_objs.length; i++){
-            const cur_obj = considered_objs[i]
-            const t_tmp = cur_obj.hit(ray)
-            if(t_tmp < t){
-                t = t_tmp
-                obj_found = cur_obj
+            for(let i=0; i<considered_objs.length; i++){
+                const cur_obj = considered_objs[i]
+                const t_tmp = cur_obj.hit(ray)
+                if(t_tmp < t){
+                    t = t_tmp
+                    obj_found = cur_obj
+                }
             }
         }
 
        //self.timer.step("HIT")
 
-        if(t === Infinity){
-            Color.mul(ray.color, self.sky_color)
-            break
+        { // If ray escaped
+            if(t === Infinity){
+                Ray.addToThroughput(ray, path_weight, self.sky_color)
+                break
+            }
+
         }
 
-        self.materials[obj_found.material].apply(ray, t, obj_found)
+        Ray.moveAt(ray, t)
+        const cosHitAngle = Math.abs(Vec3.dot(ray.direction, obj_found.normalAt(ray.origin)))
+
+        { // Sample direct illumination from the intersection
+            const light = sampleLight(self.lights)
+            const lightRay = light.getRay(ray.origin)
+            const material_color = self.materials[obj_found.material].apply(ray, obj_found)
+            if(!isOccluded(lightRay, self.bvh, 1)){
+                const light_color = light.apply(ray)
+                const hit_color = Color.mul(Color.clone(material_color), light_color) // Here we need to take into account the solid angle -> Jacobian
+                Ray.addToThroughput(ray, path_weight, hit_color) // We should divide by the material color PDF
+            }
+
+            Color.mul(path_weight, Color.mulScalar(Color.clone(material_color), cosHitAngle))
+        }
+
+        //console.log(path_weight)
 
         //self.timer.step("MATERIAL")
     }
