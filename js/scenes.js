@@ -16,11 +16,29 @@ export default class Scenes{
         }
     }
 
+    static SimpleSphere(){
+        return {
+            materials:[
+                new LambertianDiffuse(Color.new(0.8, 0.4, 0.3, 1)),
+                new Dielectric(Color.new(1,1,1, 1), 1, 1.5),
+                new Refract(Color.new(1, 1, 1, 1), 1, 1.5)
+            ],
+            shapes:[
+                new Sphere( Vec3.new(0,   -80.98, -4), 80,    0),
+                new Sphere( Vec3.new(0, 0, -4), 0.5, 1)
+            ],
+            objects:[],
+            lights: [
+                new PointLight(Vec3.new(0, 4, -4), Color.new(0,1,0,1), 300)
+            ]
+        }
+    }
+
     static Teapot(){
         return {
             materials:[
                 new LambertianDiffuse(Color.new(0.8, 0.4, 0.3, 1)),
-                new Dielectric(Color.new(0.9, 0.9, 0.9, 1), 1, 1.5),
+                new Dielectric(Color.new(1, 1, 1, 1), 1, 1.5),
                 new LambertianDiffuse(Color.new(1,0,0,1)),
                 new Conductor(Color.new(0.9, 0.6, 0.1, 1), Complex.fromReal(1), Complex.new(0.2, 3))
             ],
@@ -33,7 +51,7 @@ export default class Scenes{
             ],
             shapes:[
                 new Sphere( Vec3.new(0,   -80.98, -4), 80,    0),
-                new Sphere( Vec3.new(1.2, 1.2, -5), 0.5,      1),
+                /*new Sphere( Vec3.new(1.2, 1.2, -5), 0.5,      1),
                 new Sphere( Vec3.new(-1.2,  1.2, -5), 0.5,    1),
 
                 
@@ -62,12 +80,12 @@ export default class Scenes{
                 new Sphere( Vec3.new(0.7, -0.86, -3), 0.15,   1),
 
                 new Sphere( Vec3.new(-0.7, -0.56, -3), 0.15,  1),
-                new Sphere( Vec3.new(0.7, -0.56, -3), 0.15,   1),
+                new Sphere( Vec3.new(0.7, -0.56, -3), 0.15,   1),*/
 
                 //new Sphere( Vec3.new(0,   -0.26, -6.5), 3*0.15,    6),
             ],
             lights: [
-                new PointLight(Vec3.new(0, 7, -5), Color.new(0.5,0.5,0.5,1))
+                new PointLight(Vec3.new(1, 5, -5), Color.new(1,1,1,1), 100)
             ]
         }
     }
@@ -106,7 +124,7 @@ export default class Scenes{
                 new Sphere( Vec3.new(0,   -80.98, -4), 80, 0),
             ],
             lights:[
-                new PointLight(Vec3.new(0, 7, -5), Color.new(1,1,1,1))
+                new PointLight(Vec3.new(2, 5, -5), Color.new(1,1,1,1))
             ]
         }
     }

@@ -7,7 +7,7 @@ export const LIGHTS = {
 export function deserialize(light){
     switch(light.type){
         case LIGHTS.PointLight:
-            return new PointLight(light.position, light.color)
+            return new PointLight(light.position, light.color, light.power)
         default:
             console.error(`Unknown light type : ${light.type}`)
     }
@@ -19,14 +19,17 @@ export function sampleLight(lights){
 }
 
 export class PointLight{
-    constructor(position, color){
+    constructor(position, color, power){
         this.type = LIGHTS.PointLight
         this.position = position
         this.color = color
+        this.power = power
     }
 
-    apply(ray){
-        return this.color
+    getRadiance(ray){
+        // Theoretically we are returning irradiance here, but outgoing radiance doesn't mean anything for point light
+        const distance_squared = Vec3.norm_squared(Vec3.sub(Vec3.clone(this.position), ray.origin))
+        return Color.mulScalar(Color.clone(this.color), this.power/(4*Math.PI*distance_squared))
     }
 
     getRay(origin){

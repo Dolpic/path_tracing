@@ -3,7 +3,7 @@ import { Color, Ray, Vec3 } from "./primitives.js";
 import Timer from "./Timer.js";
 import { deserialize } from "./shapes.js";
 import { computeBVH, gatherFromBVH, isOccluded } from "./BVH.js";
-import { deserialize as deserialize_mat } from "./materials.js";
+import { BxDF, deserialize as deserialize_mat } from "./materials.js";
 import { deserialize as deserialize_light, sampleLight } from "./Lights.js";
 
 onmessage = e => {
@@ -22,7 +22,7 @@ function init(id, scene, camera){
     self.lights    = scene.lights.map(light=> deserialize_light(light))
     self.bvh       = computeBVH(scene.shapes.map(obj=>deserialize(obj)), self.timer)
     self.camera    = camera
-    self.sky_color = Color.new(0.7, 0.7, 1, 1)
+    self.sky_color = Color.new(0,0,0,1) //Color.new(0.7, 0.7, 1, 1)
 }
 
 function render(params){
@@ -87,7 +87,7 @@ function trace(ray, max_iterations=100){
         let t = Infinity
         let obj_found
 
-        //self.timer.start()
+        self.timer.start()
 
         { // Find intersection
             let considered_objs = []
@@ -106,7 +106,7 @@ function trace(ray, max_iterations=100){
             }
         }
 
-       //self.timer.step("HIT")
+       self.timer.step("HIT")
 
         { // If ray escaped
             if(t === Infinity){
@@ -117,23 +117,25 @@ function trace(ray, max_iterations=100){
         }
 
         Ray.moveAt(ray, t)
-        const cosHitAngle = Math.abs(Vec3.dot(ray.direction, obj_found.normalAt(ray.origin)))
-
         { // Sample direct illumination from the intersection
             const light = sampleLight(self.lights)
             const lightRay = light.getRay(ray.origin)
-            const material_color = self.materials[obj_found.material].apply(ray, obj_found)
-            if(!isOccluded(lightRay, self.bvh, 1)){
-                const light_color = light.apply(ray)
-                const hit_color = Color.mul(Color.clone(material_color), light_color) // Here we need to take into account the solid angle -> Jacobian
-                Ray.addToThroughput(ray, path_weight, hit_color) // We should divide by the material color PDF
+            const material = self.materials[obj_found.material]
+            const material_color = Color.clone(material.apply(ray, obj_found))
+            if(material.type != BxDF.Dielectric){ // TODO Same for similar materials and rewrite that
+                if(!isOccluded(lightRay, self.bvh, 1)){
+                    const light_color = light.getRadiance(ray)
+                    const hit_cos_angle = Math.abs(Vec3.dot(Vec3.normalize(lightRay.direction), obj_found.normalAt(ray.origin)))
+                    const hit_color = Color.mulScalar(Color.mul(Color.clone(material_color), light_color), hit_cos_angle) // Here we need to take into account the solid angle -> Jacobian
+                    Ray.addToThroughput(ray, path_weight, hit_color) // We should divide by the material color PDF
+                }    
             }
-
-            Color.mul(path_weight, Color.mulScalar(Color.clone(material_color), cosHitAngle))
+            
+            Color.mul(path_weight, material_color)
         }
 
         //console.log(path_weight)
 
-        //self.timer.step("MATERIAL")
+        self.timer.step("MATERIAL")
     }
 }

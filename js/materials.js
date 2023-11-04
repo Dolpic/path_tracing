@@ -88,31 +88,48 @@ export class Refract{
         this.eta_to = eta_to
     }
     apply(ray, obj){
-        const normal = obj.normalAt(ray.origin)
-        const isFromOutside = Vec3.dot(normal, ray.direction) < 0
-        const eta_ratio = isFromOutside ? this.eta_from/this.eta_to : this.eta_to/this.eta_from
-        const dir_normalized = Vec3.normalize(Vec3.clone(ray.direction))
-        const cos_theta = Vec3.dot( Vec3.mulScalar( Vec3.clone(dir_normalized), -1), normal)
+        Vec3.normalize(ray.direction)
+        let eta_ratio
+        let normal = obj.normalAt(ray.origin)
+        let cos_incident = Vec3.dot(ray.direction, normal)
+
+        if(cos_incident > 0){
+            eta_ratio = this.eta_to/this.eta_from
+            normal = Vec3.mulScalar(normal, -1)
+        }else{
+            eta_ratio = this.eta_from/this.eta_to
+            cos_incident *= -1
+        }
+
 
         if(
-            eta_ratio * Math.sqrt(1-cos_theta*cos_theta) > 1 || // Total internal reflection
-            this.schlick_approx(cos_theta, this.eta_from, this.eta_to) > Math.random() // Schlick's approximation to the fresnel equations
+            eta_ratio * Math.sqrt(1-cos_incident*cos_incident) > 1 || // Total internal reflection
+            this.schlick_approx(cos_incident, this.eta_from, this.eta_to) > Math.random() // Schlick's approximation to the fresnel equations
         ){ 
-            const reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(dir_normalized, normal) )
-            Vec3.sub(ray.direction, reflectDir)
+            this.reflect(ray, normal, ray.direction)
         }else{
-            const cos_theta_n = Vec3.mulScalar( Vec3.clone(normal), cos_theta)
-            let perpendicular = Vec3.mulScalar(Vec3.add(dir_normalized, cos_theta_n), eta_ratio)
-            let parallel = Vec3.mulScalar(normal, -Math.sqrt( 1-Vec3.norm_squared(perpendicular)  ))
+            const cos_transmitted = this.cos_theta_from_snell_law(eta_ratio, cos_incident)
+            const incident_perpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cos_incident))
+            const perpendicular = Vec3.mulScalar(incident_perpendicular, eta_ratio)
+            const parallel = Vec3.mulScalar(normal, -cos_transmitted)
             ray.direction = Vec3.add(perpendicular, parallel)
         }
         return this.color
+    }
+
+    cos_theta_from_snell_law(eta_ratio, cos_incident){
+        const squared = 1 - eta_ratio*eta_ratio*(1-cos_incident*cos_incident)
+        return squared < 0 ? false : Math.sqrt(squared)
     }
 
     schlick_approx(cos, eta_from, eta_to) {
         let r0 = (eta_from-eta_to)/(eta_from+eta_to)
         r0 = r0*r0
         return r0 + (1-r0)*Math.pow(1-cos, 5)
+    }
+
+    reflect(ray, normal, direction){
+        Vec3.sub(ray.direction, Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
     }
 
 }
