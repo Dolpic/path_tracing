@@ -1,32 +1,49 @@
 export class Ray {
-
-    static new(origin, direction){
-        return {
-            origin:origin, 
-            direction:direction,
-            color:Color.new()
-        }
+    constructor(origin, direction){
+        this.defaultOrigin = Vec3.clone(origin)
+        this.origin        = Vec3.clone(origin)
+        this.direction     = Vec3.clone(direction)
+        this.color         = Color.new()
+        this.pathWeight    = Color.new(1,1,1,1)
     }
 
-    static resetThroughput(self){
-        Color.equal(self.color, Color.ZERO)
+    reset(direction){
+        this.setOrigin(this.defaultOrigin)
+        this.setDirection(direction)
+        Vec3.equal(this.direction,   direction)
+        Color.equal(this.color,      Color.ZERO)
+        Color.equal(this.pathWeight, Color.ONE)
     }
 
-    static addToThroughput(self, weight, color){
-        Color.add(self.color, Color.mul( Color.clone(color), weight))
+    setOrigin(origin){
+        Vec3.equal(this.origin, origin)
+        return this
     }
 
-    static moveAt(ray, t){
-        ray.origin.x += ray.direction.x * t
-        ray.origin.y += ray.direction.y * t
-        ray.origin.z += ray.direction.z * t
+    setDirection(direction){
+        Vec3.equal(this.direction, direction)
+        return this
     }
 
-    static at(ray, t){
+    addToThroughput(color){
+        Color.add(this.color, Color.mul( Color.clone(color), this.pathWeight))
+    }
+
+    updatePathWeight(factor){
+        Color.mul(this.pathWeight, factor)
+    }
+
+    moveOriginAt(t){
+        this.origin.x += this.direction.x * t
+        this.origin.y += this.direction.y * t
+        this.origin.z += this.direction.z * t
+    }
+
+    at(t){
         return Vec3.new(
-            ray.direction.x * t,
-            ray.direction.y * t,
-            ray.direction.z * t
+            this.direction.x * t,
+            this.direction.y * t,
+            this.direction.z * t
         )
     } 
 }
@@ -288,6 +305,7 @@ export class Color{
     }
 
     static ZERO = {r:0, g:0, b:0, a:1}
+    static ONE =  {r:1, g:1, b:1, a:1}
 }
 
 export class Bbox{

@@ -1,6 +1,6 @@
-import { Shapes } from "./shapes.js";
+import { Shapes } from "./Shape.js";
 
-export default class Objects{
+export default class Object{
     static async loadWavefront(file){
         const utf8Decoder = new TextDecoder("utf-8")
         const response = await fetch("ressources/models/"+file+".obj")
@@ -35,9 +35,9 @@ export default class Objects{
                     })
                     break
                 case "f":
-                    const p1_i = Objects._faceInfo(split[1])
-                    const p2_i = Objects._faceInfo(split[2])
-                    const p3_i = Objects._faceInfo(split[3])
+                    const p1_i = Object._faceInfo(split[1])
+                    const p2_i = Object._faceInfo(split[2])
+                    const p3_i = Object._faceInfo(split[3])
 
                     faces.push({
                         vertices:[
@@ -83,7 +83,7 @@ export default class Objects{
 
     static async loadObject(obj){
         const obj_data = await Objects.loadWavefront(obj.file)
-        return Objects.wavefrontToTriangles(obj_data, obj.material, obj.transformMatrix)
+        return Object.wavefrontToTriangles(obj_data, obj.material, obj.transformMatrix)
     }
 
     static async loadObjects(objs){

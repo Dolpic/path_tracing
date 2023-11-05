@@ -1,19 +1,16 @@
-import { Sphere } from "./shapes.js"
-import Objects from "./Objects.js"
+import { Sphere } from "./objects/Shape.js"
+import Objects from "./objects/Object.js"
 import { LambertianDiffuse, Reflect, Refract, Dielectric, Conductor} from "./materials.js"
 import { Vec3, Color, Complex } from "./primitives.js"
-import Matrix from "./Matrix.js"
+import Matrix from "./primitives/Matrix.js"
 import {PointLight} from "./Lights.js"
 
 export default class Scenes{
 
     static async loadScene(scene){
         const objs = await Objects.loadObjects(scene.objects)
-        return {
-            shapes: [...scene.shapes, ...objs.flat()],
-            materials: scene.materials,
-            lights: scene.lights
-        }
+        scene.shapes = [...scene.shapes, ...objs.flat()]
+        return scene
     }
 
     static SimpleSphere(){

@@ -1,4 +1,4 @@
-import { Bbox, Vec3 } from "./primitives.js"
+import { Bbox, Vec3 } from "../primitives.js"
 
 const T_MIN = 0.0001
 
