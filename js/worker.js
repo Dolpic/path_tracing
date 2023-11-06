@@ -4,7 +4,7 @@ import { deserialize } from "./objects/Shape.js";
 import { ObjectsBVH} from "./objects/structures/ObjectsBVH.js";
 import Camera from "./Camera.js"
 import { deserialize as deserializeMaterial } from "./materials.js"; // TODO do the same as for deserialize in camera
-import { Light }    from "./Lights.js";
+import Light from "./Lights.js";
 import { PathTracer } from "./Tracer.js";
 
 onmessage = e => {
@@ -19,15 +19,13 @@ onmessage = e => {
 function init(id, scene, camera){
     self.timer     = new Timer()
     self.id        = id
-    self.materials = scene.materials.map(mat=>deserializeMaterial(mat))
     self.camera    = Camera.deserialize(camera)
-    self.sky_color = Color.new(0, 0, 0, 1)//Color.new(0.7, 0.7, 1, 1)
 
-
+    const materials = scene.materials.map(m=>deserializeMaterial(m))
     const lights = scene.lights.map(l=>Light.deserialize(l))
-    const bvh = new ObjectsBVH(scene.shapes.map(obj=>deserialize(obj)))
+    const bvh = new ObjectsBVH(scene.shapes.map(s=>deserialize(s, materials)))
     bvh.compute()
-    self.tracer = new PathTracer(lights, bvh)
+    self.tracer = new PathTracer(bvh, lights, 100, true, true)
 }
 
 function render(params){
@@ -64,7 +62,7 @@ function render(params){
             imageData[index]   = final_color.r*255
             imageData[index+1] = final_color.g*255
             imageData[index+2] = final_color.b*255
-            imageData[index+3] = final_color.a*255
+            imageData[index+3] = 255
 
             if(index-previous_index >= 10000){
                 postMessage({msg:"progress", progress:(index-previous_index)/4})
@@ -73,7 +71,7 @@ function render(params){
         }
     }
 
-    self.timer.result()
+    self.tracer.timerResult()
     
     postMessage({msg:"progress", progress:chunk_width*chunk_height-previous_index/4})
     return {

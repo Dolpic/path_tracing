@@ -1,20 +1,17 @@
 import { Vec3, Ray, Color, Complex } from "./primitives.js"
 
 export const BxDF = {
-    PerfectDiffuse: 0,
-    LambertianDiffuse: 1,
-    Reflect: 2,
-    Refract: 3,
-    Dielectric: 4,
-    Conductor: 5
+    Diffuse: 0,
+    Reflect: 1,
+    Refract: 2,
+    Dielectric: 3,
+    Conductor: 4
 }
 
 export function deserialize(mat){
     switch(mat.type){
-        case BxDF.PerfectDiffuse:
-            return new PerfectDiffuse(mat.color)
-        case BxDF.LambertianDiffuse:
-            return new LambertianDiffuse(mat.color)
+        case BxDF.Diffuse:
+            return new Diffuse(mat.color)
         case BxDF.Reflect:
             return new Reflect(mat.color, mat.granular_factor)
         case BxDF.Refract:
@@ -28,55 +25,44 @@ export function deserialize(mat){
     }
 }
 
-export class PerfectDiffuse{
+export class Diffuse{
     constructor(color){
-        this.type = BxDF.PerfectDiffuse
+        this.type = BxDF.Diffuse
         this.color = color
     }
-    apply(ray, obj){
-        const normal = obj.normalAt(ray.origin)
-        const sampled_dir = Vec3.random_spheric()
-        ray.direction = Vec3.dot(normal, sampled_dir) < 0 ? sampled_dir : Vec3.mulScalar(sampled_dir, -1)
-        return this.color
-    }
-}
 
-export class LambertianDiffuse{
-    constructor(color){
-        this.type = BxDF.LambertianDiffuse
-        this.color = color
-    }
-    apply(ray, obj){
-        const normal = obj.normalAt(ray.origin)
-        const sampled_dir = Vec3.random_spheric(ray.direction)
-        ray.direction = Vec3.add(normal, Vec3.normalize(sampled_dir))
-        return this.color
+    sample(ray, normal){
+        const sampledDir = Vec3.normalize(Vec3.random_spheric(ray.direction))
+        return {
+            weight     : this.color,
+            throughput : this.color,
+            direction  : Vec3.add(normal, sampledDir)
+        }
     }
 }
 
 export class Reflect{
-    constructor(color, granular_factor=0.1){
+    constructor(color, granularFactor=0.1){
         this.type = BxDF.Reflect
         this.color = color
-        this.granular_factor = granular_factor
+        this.granularFactor = granularFactor
     }
-    apply(ray, obj){
-        let normal = obj.normalAt(ray.origin)
+
+    sample(ray, normal){
         let reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(ray.direction, normal) )
-
-        // TODO necessary ?
-       /* if(dot > 0){
-            Vec3.mulScalar(normal, -1)
-        }
-        dot = Vec3.dot(ray.direction, normal)*/
-
-        if(this.granular_factor > 0){
+        let resultDir
+        if(this.granularFactor > 0){
             let reflectJiggle = Vec3.mulScalar( Vec3.normalize(Vec3.random_spheric(Vec3.new())), this.granular_factor) 
-            Vec3.sub(ray.direction, Vec3.add(reflectDir, reflectJiggle ))
+            resultDir = Vec3.sub(Vec3.clone(ray.direction), Vec3.add(reflectDir, reflectJiggle ))
         }else{
-            Vec3.sub(ray.direction, reflectDir)
+            resultDir = Vec3.sub(Vec3.clone(ray.direction), reflectDir)
         }
-        return this.color
+
+        return {
+            weight     : this.color,
+            throughput : Color.ZERO,
+            direction  : resultDir
+        }
     }
 }
 
@@ -87,10 +73,9 @@ export class Refract{
         this.eta_from = eta_from
         this.eta_to = eta_to
     }
-    apply(ray, obj){
-        Vec3.normalize(ray.direction)
+
+    sample(ray, normal){
         let eta_ratio
-        let normal = obj.normalAt(ray.origin)
         let cos_incident = Vec3.dot(ray.direction, normal)
 
         if(cos_incident > 0){
@@ -101,20 +86,25 @@ export class Refract{
             cos_incident *= -1
         }
 
-
+        let resultDir
         if(
             eta_ratio * Math.sqrt(1-cos_incident*cos_incident) > 1 || // Total internal reflection
             this.schlick_approx(cos_incident, this.eta_from, this.eta_to) > Math.random() // Schlick's approximation to the fresnel equations
         ){ 
-            this.reflect(ray, normal, ray.direction)
+            resultDir = this.reflect(ray, normal, ray.direction)
         }else{
             const cos_transmitted = this.cos_theta_from_snell_law(eta_ratio, cos_incident)
             const incident_perpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cos_incident))
             const perpendicular = Vec3.mulScalar(incident_perpendicular, eta_ratio)
             const parallel = Vec3.mulScalar(normal, -cos_transmitted)
-            ray.direction = Vec3.add(perpendicular, parallel)
+            resultDir = Vec3.add(perpendicular, parallel)
         }
-        return this.color
+
+        return {
+            weight     : this.color,
+            throughput : Color.ZERO,
+            direction  : resultDir
+        }
     }
 
     cos_theta_from_snell_law(eta_ratio, cos_incident){
@@ -129,7 +119,7 @@ export class Refract{
     }
 
     reflect(ray, normal, direction){
-        Vec3.sub(ray.direction, Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
+        return Vec3.sub(Vec3.clone(ray.direction), Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
     }
 
 }
@@ -142,10 +132,8 @@ export class Dielectric{
         this.eta_to = eta_to
     }
 
-    apply(ray, obj){
-        Vec3.normalize(ray.direction)
+    sample(ray, normal){
         let eta_ratio
-        let normal = obj.normalAt(ray.origin)
         let cos_incident = Vec3.dot(ray.direction, normal)
 
         if(cos_incident > 0){
@@ -157,21 +145,27 @@ export class Dielectric{
         }
 
         const cos_transmitted = this.cos_theta_from_snell_law(eta_ratio, cos_incident)
+        let resultDir
 
         if(cos_transmitted === false){ // Total internal reflection
-            this.reflect(ray, normal, ray.direction)
+            resultDir = this.reflect(ray, normal, ray.direction)
         }else{
             const r = this.fresnel_reflectance(eta_ratio, cos_incident, cos_transmitted)
             if(r > Math.random()){
-                this.reflect(ray, normal, ray.direction)
+                resultDir = this.reflect(ray, normal, ray.direction)
             }else{ // Transmit
                 const incident_perpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cos_incident))
                 const perpendicular = Vec3.mulScalar(incident_perpendicular, eta_ratio)
                 const parallel = Vec3.mulScalar(normal, -cos_transmitted)
-                ray.direction = Vec3.add(perpendicular, parallel)
+                resultDir = Vec3.add(perpendicular, parallel)
             }
         }
-        return this.color
+
+        return {
+            weight     : this.color,
+            throughput : Color.ZERO,
+            direction  : resultDir
+        }
     }
 
     cos_theta_from_snell_law(eta_ratio, cos_incident){
@@ -186,7 +180,7 @@ export class Dielectric{
     }
 
     reflect(ray, normal, direction){
-        Vec3.sub(ray.direction, Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
+        return Vec3.sub(Vec3.clone(ray.direction), Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
     }
 }
 
@@ -198,10 +192,8 @@ export class Conductor{
         this.eta_to = eta_to
     }
 
-    apply(ray, obj){
-        Vec3.normalize(ray.direction)
+    sample(ray, normal){
         let eta_ratio
-        let normal = obj.normalAt(ray.origin)
         let cos_incident = Vec3.dot(ray.direction, normal)
 
         if(cos_incident > 0){
@@ -215,8 +207,13 @@ export class Conductor{
         const cos_transmitted = this.cos_theta_from_snell_law(eta_ratio, cos_incident)
         const r = this.fresnel_reflectance(eta_ratio, cos_incident, cos_transmitted)
 
-        this.reflect(ray, normal, ray.direction)
-        return Color.mul( Color.clone(this.color), r)
+        const resDir = this.reflect(ray, normal, ray.direction)
+        const resColor = Color.mulScalar( Color.clone(this.color), r)
+        return {
+            weight     : resColor,
+            throughput : resColor,
+            direction  : resDir
+        }
     }
 
     cos_theta_from_snell_law(eta_ratio, cos_incident){
@@ -247,6 +244,6 @@ export class Conductor{
     }
 
     reflect(ray, normal, direction){
-        Vec3.sub(ray.direction, Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
+        return Vec3.sub(Vec3.clone(ray.direction), Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
     }
 }

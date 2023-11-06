@@ -1,6 +1,6 @@
 import { Color, Ray, Vec3 } from "./primitives.js"
 
-const LIGHTS = {
+export const LIGHTS = {
     PointLight:0
 }
 
@@ -8,16 +8,18 @@ export function sampleLight(lights){
     return lights[Math.floor(Math.random()*lights.length)]
 }
 
-export class Light{
+export default class Light{
     constructor(color, power){
         this.color = color
         this.power = power
     }
 
-    static deserialize(light){
-        switch(light.type){
+    static deserialize(l){
+        switch(l.type){
             case LIGHTS.PointLight:
-                return new PointLight(light.position, light.color, light.power)
+                return new PointLight(l.position, l.color, l.power)
+            case LIGHTS.EnvironmentalLight:
+                return new EnvironmentalLight(l.color, l.power)
             default:
                 console.error(`Unknown light type : ${light.type}`)
         }
@@ -25,7 +27,7 @@ export class Light{
 }
 
 export class PointLight extends Light{
-    constructor(position, color, power){
+    constructor(position, color, power=300){
         super(color, power)
         this.type = LIGHTS.PointLight
         this.position = position
@@ -40,5 +42,19 @@ export class PointLight extends Light{
 
     getRay(origin){
         return this.ray.setOrigin(origin).setDirection(Vec3.sub(Vec3.clone(this.position), origin))
+    }
+}
+
+export class EnvironmentalLight extends Light{
+    constructor(color, power=1){
+        super(color, power)
+    }
+
+    getRadiance(){
+        return Color.mulScalar(Color.clone(this.color), this.power)
+    }
+
+    getRay(){
+        throw new Error("Undefined ray for environmental lights")
     }
 }

@@ -25,7 +25,12 @@
             <p>This is a very simple path tracer implemented purely in javascript.</p>
             <p>For now it is very limited and not well optimized. Numerous new features are planned. For now it has the following features : </p>
             <ul>
-                <li>Handles spheres and triangle rendering, with the feature to load any triangulated mesh</li>
+                <li>Geometry including</li>
+                <ul>
+                    <li>Spheres</li>
+                    <li>Triangles, with specific normal per vertex</li>
+                    <li>Wavefront model loader, for triangulated models</li>
+                </ul>
                 <li>User-defined number of samples per pixels (for now the samples in each pixel have random position)</li>
                 <li>Camera with</li>
                 <ul>
@@ -33,7 +38,7 @@
                     <li>Modifiable field of view</li>
                     <li>Depth of field and defocus blur with modifiable lens size and focal distance</li>
                 </ul>
-                <li>Usage of a <a href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">Bounding Volume Hierarchie</a> to improve the performance</li>
+                <li>Usage of a <a href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">Bounding Volume Hierarchy</a> to improve the performance</li>
                 <li>Materials including</li>
                 <ul>
                     <li>Lambertian diffuse reflection</li>
@@ -81,7 +86,7 @@
                 }
             }
 
-            let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Camera", "Objects"], "Camera")
+            let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Camera", "Scene", "Objects"], "Camera")
             tabs.setContent("Camera", `
                 <p>Position</p>
                 <div id="camera_position"></div>
@@ -91,6 +96,14 @@
             tabs.setContent("Objects", `
                 <p>-- Tab under construction --</p>
             `)
+            tabs.setContent("Scene", `
+                <select id="selectScene">
+                    <option value="teapot" selected="selected">Teapot and Spheres</option>
+                    <option value="dragons">Dragons</option>
+                </select>
+            `)
+
+
 
             new Slider("camera_position", "X", 0, val=>document.global_params.camera.x=val, -20, 20, 1)
             new Slider("camera_position", "Y", 0, val=>document.global_params.camera.y=val, -20, 20, 1)
@@ -101,6 +114,16 @@
             new Slider("bottom_parameters", "Samples per pixel", 25,  val=>document.global_params.samples_per_pixel=val, 5, 150, 1, 0)
         }
 
+        function getScene(){
+            const scene = document.getElementById("selectScene").value
+            switch(scene){
+                case "teapot":
+                    return Scenes.Teapot()
+                case "dragons":
+                    return Scenes.Dragons()
+            }
+        }
+
         function reset(){
             if(document.global_state != undefined){
                 document.global_state.workers.forEach(w => w.terminate())
@@ -108,7 +131,8 @@
             document.global_state = {
                 currentChunk: 0,
                 pixels_computed: 0,
-                workers: []
+                workers: [],
+                scene: getScene()
             }
         }
  
@@ -133,7 +157,7 @@
             }
 
             setProgressMessage("Loading scene ...")
-            Scenes.loadScene(Scenes.SimpleSphere()).then(scene => {
+            Scenes.loadScene(document.global_state.scene).then(scene => {
                 setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)

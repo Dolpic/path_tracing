@@ -7,12 +7,12 @@ export const Shapes = {
     Triangle:1
 }
 
-export function deserialize(shp){
+export function deserialize(shp, mat){
     switch(shp.type){
         case Shapes.Sphere:
-            return Sphere.deserialize(shp)
+            return Sphere.deserialize(shp, mat)
         case Shapes.Triangle:
-            return Triangle.deserialize(shp)
+            return Triangle.deserialize(shp, mat)
         default:
             console.error(`Unknown shape type : ${shp.type}`)
     }
@@ -30,8 +30,8 @@ export class Sphere{
         this.material = material
     }
 
-    static deserialize(sphere){
-        return new Sphere(sphere.center, sphere.radius, sphere.material)
+    static deserialize(sphere, materials){
+        return new Sphere(sphere.center, sphere.radius, materials[sphere.material])
     }
 
     getBbox(){
@@ -111,12 +111,12 @@ export class Triangle{
         }
     }
 
-    static deserialize(triangle){
+    static deserialize(triangle, materials){
         return new Triangle(
             triangle.p1, 
             triangle.p2, 
             triangle.p3, 
-            triangle.material,
+            materials[triangle.material],
             triangle.p1_normal,
             triangle.p2_normal,
             triangle.p3_normal)

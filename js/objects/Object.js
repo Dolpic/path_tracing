@@ -82,11 +82,11 @@ export default class Object{
     }
 
     static async loadObject(obj){
-        const obj_data = await Objects.loadWavefront(obj.file)
+        const obj_data = await Object.loadWavefront(obj.file)
         return Object.wavefrontToTriangles(obj_data, obj.material, obj.transformMatrix)
     }
 
     static async loadObjects(objs){
-        return Promise.all(objs.map(obj => Objects.loadObject(obj)))
+        return Promise.all(objs.map(obj => Object.loadObject(obj)))
     }
 }

@@ -2,15 +2,14 @@ export class Ray {
     constructor(origin, direction){
         this.defaultOrigin = Vec3.clone(origin)
         this.origin        = Vec3.clone(origin)
-        this.direction     = Vec3.clone(direction)
+        this.direction     = Vec3.clone(Vec3.normalize(direction))
         this.color         = Color.new()
-        this.pathWeight    = Color.new(1,1,1,1)
+        this.pathWeight    = Color.new(1,1,1)
     }
 
     reset(direction){
         this.setOrigin(this.defaultOrigin)
         this.setDirection(direction)
-        Vec3.equal(this.direction,   direction)
         Color.equal(this.color,      Color.ZERO)
         Color.equal(this.pathWeight, Color.ONE)
     }
@@ -21,7 +20,7 @@ export class Ray {
     }
 
     setDirection(direction){
-        Vec3.equal(this.direction, direction)
+        Vec3.equal(this.direction, Vec3.normalize(direction))
         return this
     }
 
@@ -228,16 +227,15 @@ export class Vec3 {
 
 export class Color{
 
-    static new(r=0, g=0, b=0, a=1){
-        return {r:r, g:g, b:b, a:a}
+    static new(r=0, g=0, b=0){
+        return {r:r, g:g, b:b}
     }
 
     static clone(other){
         return {
             r:other.r, 
             g:other.g, 
-            b:other.b, 
-            a:other.a
+            b:other.b
         }
     }
 
@@ -245,15 +243,14 @@ export class Color{
         self.r = other.r
         self.g = other.g
         self.b = other.b
-        self.a = other.a
+        return self
     }
 
     static isNearZero(self){
         return (
             Math.abs(self.r) < 0.0001 && 
             Math.abs(self.g) < 0.0001 && 
-            Math.abs(self.b) < 0.0001 && 
-            Math.abs(self.a) < 0.0001
+            Math.abs(self.b) < 0.0001
         )
     }
 
@@ -261,15 +258,13 @@ export class Color{
         self.r += other.r
         self.g += other.g
         self.b += other.b
-        self.a += other.a
         return self
     }
 
-    static addScalar(self, other, with_alpha=false){
+    static addScalar(self, other){
         self.r += other
         self.g += other
         self.b += other
-        if(with_alpha) self.a += other
         return self
     }
 
@@ -277,15 +272,13 @@ export class Color{
         self.r *= other.r
         self.g *= other.g
         self.b *= other.b
-        self.a *= other.a
         return self
     }
 
-    static mulScalar(self, scalar, with_alpha=false){
+    static mulScalar(self, scalar){
         self.r *= scalar
         self.g *= scalar
         self.b *= scalar
-        if(with_alpha) self.a *= scalar
         return self
     }
 
@@ -293,7 +286,6 @@ export class Color{
         self.r /= scalar
         self.g /= scalar
         self.b /= scalar
-        self.a /= scalar
         return self
     }
 
@@ -304,8 +296,8 @@ export class Color{
         return self
     }
 
-    static ZERO = {r:0, g:0, b:0, a:1}
-    static ONE =  {r:1, g:1, b:1, a:1}
+    static ZERO = {r:0, g:0, b:0}
+    static ONE =  {r:1, g:1, b:1}
 }
 
 export class Bbox{
