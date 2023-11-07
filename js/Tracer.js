@@ -1,7 +1,6 @@
 import Timer from "./Timer.js"
 import { Color } from "./primitives.js"
 import { sampleLight, LIGHTS } from "./Lights.js"
-import { BxDF } from "./materials.js"
 import { Vec3 } from "./primitives.js"
 
 class Tracer{
@@ -27,13 +26,13 @@ class Tracer{
                 break
             }
             ray.moveOriginAt(t)
-            //if(this.timer) this.timer.step("Intersection")
+            if(this.timer) this.timer.step("Intersection")
             this.interaction(ray, objHit)
-            //if(this.timer) this.timer.step("Interaction")
+            if(this.timer) this.timer.step("Interaction")
         }
     }
 
-    timerResult(){
+    printTimerResult(){
         if(this.timer) this.timer.result()
     }
 }
@@ -64,18 +63,21 @@ export class PathTracer extends Tracer{
             const normal = objHit.normalAt(ray.origin)
             const matSample = objHit.material.sample(ray, Vec3.clone(normal))
 
-            Vec3.equal(ray.direction, matSample.direction)
+            Vec3.equal(ray.direction, Vec3.normalize(matSample.direction))
 
-            const light = sampleLight(this.lights)
-            if(light != undefined){
-                const lightRay = light.getRay(ray.origin)
-    
-                if(!this.objStructure.isOccluded(lightRay, 1)){
-                    const light_color = light.getRadiance(ray)
-                    const hit_cos_angle = Math.abs(Vec3.dot(lightRay.direction, normal))
-                    const hit_color = Color.mulScalar(Color.mul(Color.clone(matSample.throughput), light_color), hit_cos_angle)
-                    ray.addToThroughput(hit_color)
-                }    
+            if(matSample.throughput !== Color.ZERO){
+                const light = sampleLight(this.lights)
+                if(light != undefined){
+                    const {ray:lightRay, t:lightT} = light.getRay(ray.origin)
+                    if(!this.objStructure.isOccluded(lightRay, lightT)){
+                        const light_color = light.getRadiance(ray)
+                        const hit_cos_angle = Math.abs(Vec3.dot(lightRay.direction, normal))
+                        const hit_color = Color.mulScalar(Color.mul(Color.clone(matSample.throughput), light_color), hit_cos_angle)
+                        ray.addToThroughput(hit_color)
+                    }else{
+                       // ray.addToThroughput(Color.new(1,0,0))
+                    }
+                }
             }
             ray.updatePathWeight(matSample.weight)
         }else{

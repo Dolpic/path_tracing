@@ -1,4 +1,3 @@
-import Timer from "./Timer.js";
 import { Color } from "./primitives.js";
 import { deserialize } from "./objects/Shape.js";
 import { ObjectsBVH} from "./objects/structures/ObjectsBVH.js";
@@ -16,8 +15,11 @@ onmessage = e => {
     }
 }
 
+function postProgress(progression){
+    postMessage({msg:"progress", progress:progression})
+}
+
 function init(id, scene, camera){
-    self.timer     = new Timer()
     self.id        = id
     self.camera    = Camera.deserialize(camera)
 
@@ -29,55 +31,55 @@ function init(id, scene, camera){
 }
 
 function render(params){
-    const bytes_per_pixel = 4
-    const img_width    = params.img_width
-    const img_height   = params.img_height
-    const chunk_width  = params.chunk_width
-    const chunk_height = params.chunk_height
-    const startX       = params.startX
-    const startY       = params.startY
-    const samples_per_pixel = params.samples_per_pixel
-    let imageData = new Uint8ClampedArray(chunk_width*chunk_height*bytes_per_pixel)
+    const imgWidth    = params.img_width
+    const imgHeight   = params.img_height
+    const chunkWidth  = params.chunk_width
+    const chunkHeight = params.chunk_height
+    const startX      = params.startX
+    const startY      = params.startY
+    const samplesPerPixel = params.samples_per_pixel
+    const bytesPerPixel   = 4
+    let imageData = new Uint8ClampedArray(chunkWidth*chunkHeight*bytesPerPixel)
 
-    let previous_index = 0
-    let final_color = Color.new()
+    let previousIndex = 0
+    let finalColor = Color.new()
 
-    postMessage({msg:"progress", progress:0})
-    for(let y=startY; y<startY+chunk_height; y++){
-        for(let x=startX; x<startX+chunk_width; x++){
-            Color.equal(final_color, Color.ZERO)
+    postProgress(0)
+    for(let y=startY; y<startY+chunkHeight; y++){
+        for(let x=startX; x<startX+chunkWidth; x++){
+            Color.equal(finalColor, Color.ZERO)
             
-            for(let sample=0; sample < samples_per_pixel; sample++){
+            for(let sample=0; sample < samplesPerPixel; sample++){
                 const dx = Math.random()
                 const dy = Math.random()
-                const ray = self.camera.getRay((x+dx)/img_width, (y+dy)/img_height)
+                const ray = self.camera.getRay((x+dx)/imgWidth, (y+dy)/imgHeight)
                 self.tracer.trace(ray)
-                Color.div(ray.color, samples_per_pixel)
-                Color.add(final_color, ray.color)
+                Color.div(ray.color, samplesPerPixel)
+                Color.add(finalColor, ray.color)
             }
 
-            Color.gamma_correct(final_color)
+            Color.gamma_correct(finalColor)
 
-            const index = bytes_per_pixel*( (x-startX) + (y-startY) *chunk_width)
-            imageData[index]   = final_color.r*255
-            imageData[index+1] = final_color.g*255
-            imageData[index+2] = final_color.b*255
+            const index = bytesPerPixel*((x-startX)+(y-startY)*chunkWidth)
+            imageData[index]   = finalColor.r*255
+            imageData[index+1] = finalColor.g*255
+            imageData[index+2] = finalColor.b*255
             imageData[index+3] = 255
 
-            if(index-previous_index >= 10000){
-                postMessage({msg:"progress", progress:(index-previous_index)/4})
-                previous_index = index
+            if(index-previousIndex >= 10000){
+                postProgress((index-previousIndex)/4)
+                previousIndex = index
             }
         }
     }
 
-    self.tracer.timerResult()
+    self.tracer.printTimerResult()
     
-    postMessage({msg:"progress", progress:chunk_width*chunk_height-previous_index/4})
+    postProgress(chunkWidth*chunkHeight-previousIndex/4)
     return {
         msg:       "finished",
-        width:     chunk_width,
-        height:    chunk_height,
+        width:     chunkWidth,
+        height:    chunkHeight,
         posX:      startX,
         posY:      startY,
         imageData: imageData

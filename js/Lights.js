@@ -41,7 +41,12 @@ export class PointLight extends Light{
     }
 
     getRay(origin){
-        return this.ray.setOrigin(origin).setDirection(Vec3.sub(Vec3.clone(this.position), origin))
+        const dir = Vec3.sub(Vec3.clone(this.position), origin)
+        const norm = Vec3.norm(dir)
+        return {
+            ray: this.ray.setOrigin(origin).setDirection(dir),
+            t: norm
+        }
     }
 }
 

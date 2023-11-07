@@ -1,4 +1,4 @@
-import { Vec3, Ray, Color, Complex } from "./primitives.js"
+import { Vec3, Color, Complex } from "./primitives.js"
 
 export const BxDF = {
     Diffuse: 0,
@@ -15,87 +15,102 @@ export function deserialize(mat){
         case BxDF.Reflect:
             return new Reflect(mat.color, mat.granular_factor)
         case BxDF.Refract:
-            return new Refract(mat.color, mat.eta_from, mat.eta_to)
+            return new Refract(mat.color, mat.etaFrom, mat.eta_To)
         case BxDF.Dielectric:
-            return new Dielectric(mat.color, mat.eta_from, mat.eta_to)
+            return new Dielectric(mat.color, mat.etaFrom, mat.etaTo)
         case BxDF.Conductor:
-            return new Conductor(mat.color, mat.eta_from, mat.eta_to)
+            return new Conductor(mat.color, mat.etaFrom, mat.etaTo)
         default:
             console.error(`Unknown material type : ${mat.type}`)
     }
 }
 
+class Utils{
+    static reflect(direction, normal){
+        return Vec3.sub(Vec3.clone(direction), Vec3.mulScalar(normal, 2*Vec3.dot(direction, normal)))
+    }
+
+    static cosTransmittedFromSnellLaw(etaRatio, cosIncident){
+        const squared = 1 - etaRatio*etaRatio*(1-cosIncident*cosIncident)
+        return squared < 0 ? false : Math.sqrt(squared)
+    }
+
+    static adjustIfExitingRay(cosI, etaFrom, etaTo, normal){
+        if(cosI > 0){
+            Vec3.mulScalar(normal, -1)
+            return {
+                etaRatio: etaTo/etaFrom,
+                cosI:     cosI
+            }
+        }else{
+            return {
+                etaRatio: etaFrom/etaTo,
+                cosI:     -cosI
+            }
+        }
+    }
+}
+
 export class Diffuse{
     constructor(color){
-        this.type = BxDF.Diffuse
+        this.type  = BxDF.Diffuse
         this.color = color
     }
 
     sample(ray, normal){
-        const sampledDir = Vec3.normalize(Vec3.random_spheric(ray.direction))
         return {
             weight     : this.color,
             throughput : this.color,
-            direction  : Vec3.add(normal, sampledDir)
+            direction  : Vec3.add(normal, Vec3.randomOnUnitSphere(ray.direction))
         }
     }
 }
 
 export class Reflect{
-    constructor(color, granularFactor=0.1){
-        this.type = BxDF.Reflect
-        this.color = color
-        this.granularFactor = granularFactor
+    constructor(color, granularity=0.1){
+        this.type        = BxDF.Reflect
+        this.color       = color
+        this.granularity = granularity
     }
 
     sample(ray, normal){
         let reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(ray.direction, normal) )
-        let resultDir
-        if(this.granularFactor > 0){
-            let reflectJiggle = Vec3.mulScalar( Vec3.normalize(Vec3.random_spheric(Vec3.new())), this.granular_factor) 
-            resultDir = Vec3.sub(Vec3.clone(ray.direction), Vec3.add(reflectDir, reflectJiggle ))
-        }else{
-            resultDir = Vec3.sub(Vec3.clone(ray.direction), reflectDir)
+        if(this.granularity > 0){
+            let reflectJiggle = Vec3.mulScalar( Vec3.randomOnUnitSphere(Vec3.new()), this.granularity) 
+            Vec3.add(reflectDir, reflectJiggle )
         }
-
+        
         return {
             weight     : this.color,
             throughput : Color.ZERO,
-            direction  : resultDir
+            direction  : Vec3.sub(ray.direction, reflectDir)
         }
     }
 }
 
 export class Refract{
-    constructor(color, eta_from=1, eta_to=1){
-        this.type = BxDF.Refract
-        this.color = color
-        this.eta_from = eta_from
-        this.eta_to = eta_to
+    constructor(color, etaFrom=1, etaTo=1){
+        this.type    = BxDF.Refract
+        this.color   = color
+        this.etaFrom = etaFrom
+        this.etaTo   = etaTo
     }
 
     sample(ray, normal){
-        let eta_ratio
-        let cos_incident = Vec3.dot(ray.direction, normal)
-
-        if(cos_incident > 0){
-            eta_ratio = this.eta_to/this.eta_from
-            normal = Vec3.mulScalar(normal, -1)
-        }else{
-            eta_ratio = this.eta_from/this.eta_to
-            cos_incident *= -1
-        }
+        let etaRatio
+        let cosI = Vec3.dot(ray.direction, normal);
+        ({etaRatio, cosI} = Utils.adjustIfExitingRay(cosI, this.etaFrom, this.etaTo, normal))
 
         let resultDir
         if(
-            eta_ratio * Math.sqrt(1-cos_incident*cos_incident) > 1 || // Total internal reflection
-            this.schlick_approx(cos_incident, this.eta_from, this.eta_to) > Math.random() // Schlick's approximation to the fresnel equations
+            etaRatio * Math.sqrt(1-cosI*cosI) > 1 || // Total internal reflection
+            this.schlickApproximation(cosI, this.etaFrom, this.etaTo) > Math.random() // Schlick's approximation to the fresnel equations
         ){ 
-            resultDir = this.reflect(ray, normal, ray.direction)
+            resultDir = Utils.reflect(ray.direction, normal)
         }else{
-            const cos_transmitted = this.cos_theta_from_snell_law(eta_ratio, cos_incident)
-            const incident_perpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cos_incident))
-            const perpendicular = Vec3.mulScalar(incident_perpendicular, eta_ratio)
+            const cos_transmitted = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI)
+            const incidentPerpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cosI))
+            const perpendicular = Vec3.mulScalar(incidentPerpendicular, etaRatio)
             const parallel = Vec3.mulScalar(normal, -cos_transmitted)
             resultDir = Vec3.add(perpendicular, parallel)
         }
@@ -107,143 +122,112 @@ export class Refract{
         }
     }
 
-    cos_theta_from_snell_law(eta_ratio, cos_incident){
-        const squared = 1 - eta_ratio*eta_ratio*(1-cos_incident*cos_incident)
-        return squared < 0 ? false : Math.sqrt(squared)
-    }
-
-    schlick_approx(cos, eta_from, eta_to) {
-        let r0 = (eta_from-eta_to)/(eta_from+eta_to)
+    schlickApproximation(cos, etaFrom, etaTo) {
+        let r0 = (etaFrom-etaTo)/(etaFrom+etaTo)
         r0 = r0*r0
         return r0 + (1-r0)*Math.pow(1-cos, 5)
-    }
-
-    reflect(ray, normal, direction){
-        return Vec3.sub(Vec3.clone(ray.direction), Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
     }
 
 }
 
 export class Dielectric{
-    constructor(color, eta_from=1, eta_to=1){
-        this.type = BxDF.Dielectric
-        this.color = color
-        this.eta_from = eta_from
-        this.eta_to = eta_to
+    constructor(color, etaFrom=1, etaTo=1){
+        this.type    = BxDF.Dielectric
+        this.color   = color
+        this.etaFrom = etaFrom
+        this.etaTo   = etaTo
     }
 
     sample(ray, normal){
-        let eta_ratio
-        let cos_incident = Vec3.dot(ray.direction, normal)
+        let etaRatio
+        let cosI = Vec3.dot(ray.direction, normal);
+        ({etaRatio, cosI} = Utils.adjustIfExitingRay(cosI, this.etaFrom, this.etaTo, normal))
 
-        if(cos_incident > 0){
-            eta_ratio = this.eta_to/this.eta_from
-            normal = Vec3.mulScalar(normal, -1)
-        }else{
-            eta_ratio = this.eta_from/this.eta_to
-            cos_incident *= -1
-        }
-
-        const cos_transmitted = this.cos_theta_from_snell_law(eta_ratio, cos_incident)
+        const cosT = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI)
+        
         let resultDir
-
-        if(cos_transmitted === false){ // Total internal reflection
-            resultDir = this.reflect(ray, normal, ray.direction)
+        if(cosT === false){ // Total internal reflection
+            resultDir = Utils.reflect(ray.direction, normal)
         }else{
-            const r = this.fresnel_reflectance(eta_ratio, cos_incident, cos_transmitted)
-            if(r > Math.random()){
-                resultDir = this.reflect(ray, normal, ray.direction)
+            const reflectance = this.fresnelReflectance(etaRatio, cosI, cosT)
+            if(reflectance > Math.random()){
+                resultDir = Utils.reflect(ray.direction, normal)
             }else{ // Transmit
-                const incident_perpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cos_incident))
-                const perpendicular = Vec3.mulScalar(incident_perpendicular, eta_ratio)
-                const parallel = Vec3.mulScalar(normal, -cos_transmitted)
+                const incidentPerpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cosI))
+                const perpendicular = Vec3.mulScalar(incidentPerpendicular, etaRatio)
+                const parallel = Vec3.mulScalar(normal, -cosT)
                 resultDir = Vec3.add(perpendicular, parallel)
             }
         }
 
         return {
+            // Weight is always 1, as the reflectance compensates with the PDF
             weight     : this.color,
             throughput : Color.ZERO,
             direction  : resultDir
         }
     }
 
-    cos_theta_from_snell_law(eta_ratio, cos_incident){
-        const squared = 1 - eta_ratio*eta_ratio*(1-cos_incident*cos_incident)
-        return squared < 0 ? false : Math.sqrt(squared)
-    }
-
-    fresnel_reflectance(eta_ratio, cos_i, cos_t){
-        const r_parallel      = (eta_ratio*cos_i-cos_t) / (eta_ratio*cos_i+cos_t)
-        const r_perpendicular = (cos_i-eta_ratio*cos_t) / (cos_i+eta_ratio*cos_t)
-        return (r_parallel*r_parallel + r_perpendicular*r_perpendicular)/2
-    }
-
-    reflect(ray, normal, direction){
-        return Vec3.sub(Vec3.clone(ray.direction), Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
+    fresnelReflectance(eta, cosI, cosT){
+        const rParallel      = (cosI-eta*cosT) / (cosI+eta*cosT)
+        const rPerpendicular = (cosT-eta*cosI) / (cosT+eta*cosI)
+        return (rParallel*rParallel + rPerpendicular*rPerpendicular)/2
     }
 }
 
 export class Conductor{
-    constructor(color, eta_from, eta_to){
-        this.type = BxDF.Conductor
-        this.color = color
-        this.eta_from = eta_from
-        this.eta_to = eta_to
+    constructor(color, etaFrom, etaTo){
+        this.type    = BxDF.Conductor
+        this.color   = color
+        this.etaFrom = etaFrom
+        this.etaTo   = etaTo
     }
 
     sample(ray, normal){
-        let eta_ratio
-        let cos_incident = Vec3.dot(ray.direction, normal)
+        let etaRatio
+        let cosI = Vec3.dot(ray.direction, normal)
 
-        if(cos_incident > 0){
-            eta_ratio = Complex.div(Complex.clone(this.eta_to), this.eta_from)
+        if(cosI > 0){
+            etaRatio = Complex.div(Complex.clone(this.etaTo), this.etaFrom)
             normal = Vec3.mulScalar(normal, -1)
         }else{
-            eta_ratio = Complex.div(Complex.clone(this.eta_from), this.eta_to)
-            cos_incident *= -1
+            etaRatio = Complex.div(Complex.clone(this.etaFrom), this.etaTo)
+            cosI *= -1
         }
 
-        const cos_transmitted = this.cos_theta_from_snell_law(eta_ratio, cos_incident)
-        const r = this.fresnel_reflectance(eta_ratio, cos_incident, cos_transmitted)
+        const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI)
+        const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI), cosT)
 
-        const resDir = this.reflect(ray, normal, ray.direction)
-        const resColor = Color.mulScalar( Color.clone(this.color), r)
         return {
-            weight     : resColor,
-            throughput : resColor,
-            direction  : resDir
+            weight     : Color.mulScalar( Color.clone(this.color), reflectance),
+            throughput : Color.clone(this.color),
+            direction  : Utils.reflect(ray.direction, normal)
         }
     }
 
-    cos_theta_from_snell_law(eta_ratio, cos_incident){
-        const tmp     = Complex.fromReal(1-cos_incident*cos_incident)
+    cosThetaSnellLawComplex(etaRatio, cosI){
+        const tmp     = Complex.fromReal(1-cosI*cosI)
         const squared = Complex.sub(
             Complex.fromReal(1), 
-            Complex.mul( Complex.mul( Complex.clone(eta_ratio), eta_ratio), tmp)
+            Complex.mul( Complex.mul( Complex.clone(etaRatio), etaRatio), tmp)
         )
         return Complex.sqrt(squared)
     }
 
-    fresnel_reflectance(eta_ratio, cos_i, cos_t){
-        const cos_i_c = Complex.fromReal(cos_i)
+    fresnelReflectanceComplex(etaRatio, cosI, cosT){
+        const etaCosT = Complex.mul(Complex.clone(etaRatio), cosT)
+        const etaCosI = Complex.mul(Complex.clone(etaRatio), cosI)
 
-        const eta_cos_i = Complex.mul(Complex.clone(eta_ratio), cos_i_c)
         const r_parallel = Complex.div(
-            Complex.sub( Complex.clone(eta_cos_i), cos_t), 
-            Complex.add( Complex.clone(eta_cos_i), cos_t)
+            Complex.sub( Complex.clone(cosI), etaCosT), 
+            Complex.add( Complex.clone(cosI), etaCosT)
         )
 
-        const eta_cos_t = Complex.mul(Complex.clone(eta_ratio), cos_t)
         const r_perpendicular = Complex.div(
-            Complex.sub( Complex.clone(cos_i_c), eta_cos_t), 
-            Complex.add( Complex.clone(cos_i_c), eta_cos_t)
+            Complex.sub( Complex.clone(cosT), etaCosI), 
+            Complex.add( Complex.clone(cosT), etaCosI)
         )
         
         return (Complex.modulusSquared(r_parallel) + Complex.modulusSquared(r_perpendicular))/2
-    }
-
-    reflect(ray, normal, direction){
-        return Vec3.sub(Vec3.clone(ray.direction), Vec3.mulScalar(normal, 2*Vec3.dot( direction, normal)))
     }
 }

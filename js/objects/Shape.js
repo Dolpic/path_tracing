@@ -1,4 +1,6 @@
-import { Bbox, Vec3 } from "../primitives.js"
+import { Vec3 } from "../primitives.js"
+import { Bbox } from "./structures/Bbox.js"
+import { Sbox } from "./structures/Sbox.js"
 
 const T_MIN = 0.0001
 
@@ -23,11 +25,12 @@ export class Sphere{
         this.type = Shapes.Sphere
         this.center = center
         this.radius = radius
+        this.material = material
         this.bbox = Bbox.new( 
             Vec3.subScalar(Vec3.clone(center), this.radius), 
             Vec3.addScalar(Vec3.clone(center), this.radius)
         )
-        this.material = material
+        this.sbox = Sbox.new(this.center, this.radius)
     }
 
     static deserialize(sphere, materials){
@@ -36,6 +39,10 @@ export class Sphere{
 
     getBbox(){
         return this.bbox
+    }
+
+    getSbox(){
+        return this.sbox
     }
 
     hit(ray){
@@ -91,6 +98,13 @@ export class Triangle{
             Math.max(this.p1.z, this.p2.z, this.p3.z),
         )
 
+        const center = Vec3.new( (p1.x+p2.x+p3.x)/3, (p1.y+p2.y+p3.y)/3, (p1.z+p2.z+p3.z)/3 )
+        let distP1 = Vec3.norm_squared(Vec3.sub(Vec3.clone(center), p1))
+        let distP2 = Vec3.norm_squared(Vec3.sub(Vec3.clone(center), p2))
+        let distP3 = Vec3.norm_squared(Vec3.sub(Vec3.clone(center), p3))
+        let radius = Math.sqrt(Math.max(distP1, distP2, distP3))
+        this.sbox = Sbox.new(center, radius)
+
         if(p1_normal != null && p2_normal != null && p3_normal != null){
             this.interpolated_normals = true
             this.p1_normal = Vec3.normalize(p1_normal)
@@ -124,6 +138,10 @@ export class Triangle{
 
     getBbox(){
         return this.bbox
+    }
+
+    getSbox(){
+        return this.sbox
     }
 
     hit(ray){
