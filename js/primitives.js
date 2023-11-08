@@ -2,9 +2,10 @@ export class Ray {
     constructor(origin, direction){
         this.defaultOrigin = Vec3.clone(origin)
         this.origin        = Vec3.clone(origin)
-        this.direction     = Vec3.clone(Vec3.normalize(direction))
         this.color         = Color.new()
         this.pathWeight    = Color.new(1,1,1)
+        this.direction    = Vec3.new(0,0,0)
+        this.setDirection(Vec3.clone(Vec3.normalize(direction)))
     }
 
     reset(direction){
@@ -21,7 +22,12 @@ export class Ray {
 
     setDirection(direction){
         Vec3.equal(this.direction, Vec3.normalize(direction))
+        this.DotDirection = Vec3.dot(this.direction, this.direction)
         return this
+    }
+
+    getDirection(){
+        return this.direction
     }
 
     addToThroughput(color){
@@ -33,16 +39,16 @@ export class Ray {
     }
 
     moveOriginAt(t){
-        this.origin.x += this.direction.x * t
-        this.origin.y += this.direction.y * t
-        this.origin.z += this.direction.z * t
+        this.origin.x += this.getDirection().x * t
+        this.origin.y += this.getDirection().y * t
+        this.origin.z += this.getDirection().z * t
     }
 
     at(t){
         return Vec3.new(
-            this.direction.x * t,
-            this.direction.y * t,
-            this.direction.z * t
+            this.getDirection().x * t,
+            this.getDirection().y * t,
+            this.getDirection().z * t
         )
     } 
 }

@@ -15,7 +15,7 @@ class Tracer{
 
     trace(ray){
         for(let i=0; i<this.maxDepth; i++){
-            if(this.timer) this.timer.start()
+            //if(this.timer) this.timer.start()
 
             const {t, objHit} = this.objStructure.findIntersection(ray)
             if(t === Infinity){
@@ -26,9 +26,9 @@ class Tracer{
                 break
             }
             ray.moveOriginAt(t)
-            if(this.timer) this.timer.step("Intersection")
+            //if(this.timer) this.timer.step("Intersection")
             this.interaction(ray, objHit)
-            if(this.timer) this.timer.step("Interaction")
+            //if(this.timer) this.timer.step("Interaction")
         }
     }
 
@@ -63,7 +63,7 @@ export class PathTracer extends Tracer{
             const normal = objHit.normalAt(ray.origin)
             const matSample = objHit.material.sample(ray, Vec3.clone(normal))
 
-            Vec3.equal(ray.direction, Vec3.normalize(matSample.direction))
+            Vec3.equal(ray.getDirection(), Vec3.normalize(matSample.direction))
 
             if(matSample.throughput !== Color.ZERO){
                 const light = sampleLight(this.lights)
@@ -71,7 +71,7 @@ export class PathTracer extends Tracer{
                     const {ray:lightRay, t:lightT} = light.getRay(ray.origin)
                     if(!this.objStructure.isOccluded(lightRay, lightT)){
                         const light_color = light.getRadiance(ray)
-                        const hit_cos_angle = Math.abs(Vec3.dot(lightRay.direction, normal))
+                        const hit_cos_angle = Math.abs(Vec3.dot(lightRay.getDirection(), normal))
                         const hit_color = Color.mulScalar(Color.mul(Color.clone(matSample.throughput), light_color), hit_cos_angle)
                         ray.addToThroughput(hit_color)
                     }else{

@@ -34,12 +34,14 @@ export default class Camera{
                 lensV = Math.random()
             }
 
-            const focus_point = this.ray.at(-this.focalDistance/this.ray.direction.z)
+            const focus_point = this.ray.at(-this.focalDistance/this.ray.getDirection().z)
             this.ray.origin.x += this.lensRadius * lensU
             this.ray.origin.y += this.lensRadius * lensV
-            this.ray.direction.x = focus_point.x - this.ray.origin.x
-            this.ray.direction.y = focus_point.y - this.ray.origin.y
-            this.ray.direction.z = focus_point.z - this.ray.origin.z
+            this.ray.setDirection(Vec3.new(
+                focus_point.x - this.ray.origin.x,
+                focus_point.y - this.ray.origin.y,
+                focus_point.z - this.ray.origin.z
+            ))
         }
 
         return this.ray

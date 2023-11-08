@@ -1,9 +1,13 @@
 import { Sbox } from "./Sbox.js"
-import { Vec3 } from "../../primitives.js"
+import { Vec3 } from "../../../primitives.js"
 
 export class ObjectsSVH{
     constructor(objectsList){
         this.objectsList = objectsList
+
+        this.totalChecks = 0
+        this.totalDepth = 0
+        this.nbCalls = 0
     }
 
     compute(){
@@ -61,10 +65,9 @@ export class ObjectsSVH{
         const parentSurfaceArea = Sbox.surfaceArea(Sbox.getEnglobing(sbox, objs))
         Sbox.getEnglobingCenters(sbox, objs)
     
-        let axis
-        let lengthStart
-        let lengthEnd
-        const lengthX = Math.abs( (sbox.center.x+sbox.radius) - (sbox.center.x-sbox.radius) )
+        //let lengthStart = sbox.center.z-sbox.radius
+        //let lengthEnd = sbox.center.z+sbox.radius
+        /*const lengthX = Math.abs( (sbox.center.x+sbox.radius) - (sbox.center.x-sbox.radius) )
         const lengthY = Math.abs( (sbox.center.y+sbox.radius) - (sbox.center.y-sbox.radius) )
         const lengthZ = Math.abs( (sbox.center.z+sbox.radius) - (sbox.center.z-sbox.radius) )
         const max = Math.max(
@@ -80,7 +83,7 @@ export class ObjectsSVH{
             axis = "x"
             lengthStart = Math.min( (sbox.center.x+sbox.radius), (sbox.center.x-sbox.radius) )
             lengthEnd = Math.max( (sbox.center.x+sbox.radius), (sbox.center.x-sbox.radius) )
-        }else if(max ==lengthY){
+        }else if(max == lengthY){
             axis = "y"
             lengthStart = Math.min( (sbox.center.y+sbox.radius), (sbox.center.y-sbox.radius) )
             lengthEnd  = Math.max( (sbox.center.y+sbox.radius), (sbox.center.y-sbox.radius) )
@@ -89,7 +92,9 @@ export class ObjectsSVH{
             lengthStart = Math.min( (sbox.center.z+sbox.radius), (sbox.center.z-sbox.radius) )
             lengthEnd = Math.max( (sbox.center.z+sbox.radius), (sbox.center.z-sbox.radius) )
         }
-    
+        console.log(lengthZ)
+        console.log(axis)*/
+
         let cost_no_split = objs.length
     
         const nb_split = 20
@@ -105,12 +110,15 @@ export class ObjectsSVH{
             objs : [],
             sbox : Sbox.new(Vec3.new(), 0)
         }
+
+        //console.log(sbox.splitAxis)
     
     
+        
         for(let i=1; i<nb_split; i++){
     
             let current_split_cost = 0.5
-            let current_split_value = lengthStart + i*(lengthEnd - lengthStart)/nb_split 
+            let current_split_value = sbox.splitAxisStart + i*(sbox.splitAxisEnd - sbox.splitAxisStart)/nb_split 
     
             right_candidates.objs = []
             Sbox.reset(right_candidates.sbox)
@@ -119,7 +127,7 @@ export class ObjectsSVH{
     
             for(let j=0; j<objs.length; j++){
                 const obj = objs[j]
-                if(obj.sbox.center[axis] <= current_split_value){
+                if(obj.sbox.center[sbox.splitAxis] <= current_split_value){
                     left_candidates.objs.push(obj)
                     Sbox.merge(left_candidates.sbox, obj.sbox)
                 }else{
@@ -137,8 +145,16 @@ export class ObjectsSVH{
                 best_left_candidates = [...left_candidates.objs]
             }
         }
+
+
+        /*console.log(left_candidates)
+        console.log(right_candidates)
+        console.log(min_split_cost)
+        throw new Error()*/
     
         if(cost_no_split < min_split_cost || best_left_candidates.length == 0 || best_right_candidates.length == 0){
+            //console.log(`${cost_no_split} - ${min_split_cost} - ${parentSurfaceArea} - ${Sbox.surfaceArea(left_candidates.sbox)}`)
+            //console.log(left_candidates.sbox)
             return false
         }
     
@@ -153,7 +169,14 @@ export class ObjectsSVH{
 
     findIntersection(ray){
         let result = []
-        this.findIntersectionRecursive(ray, this.svh, result)
+        this.currentChecks = 0
+        this.currentDepth = 0
+        this.findIntersectionRecursive(ray, this.svh, result, 0)
+
+        this.nbCalls++
+        this.totalChecks += this.currentChecks
+        this.totalDepth += this.currentDepth
+
         let t=Infinity, objHit=null
         for(let i=0; i<result.length; i++){
             const currentObj = result[i]
@@ -166,16 +189,20 @@ export class ObjectsSVH{
         return {t:t, objHit:objHit}
     }
 
-    findIntersectionRecursive(ray, svh, acc){
+    findIntersectionRecursive(ray, svh, acc, currentDepth){
         if(Sbox.hitRay(svh[0], ray)){
+            this.currentChecks++
             if(svh.length == 2){
                 const objs = svh[1]
                 for(let i=0; i<objs.length; i++){
                     acc.push(objs[i])
                 }
+                if(this.currentDepth < currentDepth){
+                    this.currentDepth = currentDepth
+                }
             }else{
-                this.findIntersectionRecursive(ray, svh[1], acc)
-                this.findIntersectionRecursive(ray, svh[2], acc)
+                this.findIntersectionRecursive(ray, svh[1], acc, currentDepth+1)
+                this.findIntersectionRecursive(ray, svh[2], acc, currentDepth+1)
             }
         }
     }
@@ -200,5 +227,12 @@ export class ObjectsSVH{
         }
         return false
     }
+
+    /*printStats(){
+        console.log(` SVH :
+Average depth : ${this.totalDepth/this.nbCalls}
+Average checks : ${this.totalChecks/this.nbCalls}
+        `)
+    }*/
 
 }

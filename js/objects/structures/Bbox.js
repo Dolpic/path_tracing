@@ -103,7 +103,7 @@ export class Bbox{
         let min
         let max
 
-        const xInverse = 1 / ray.direction.x
+        const xInverse = 1 / ray.getDirection().x
         const tNearX = (bbox.minX - ray.origin.x) * xInverse
         const tFarX  = (bbox.maxX - ray.origin.x) * xInverse
 
@@ -115,7 +115,7 @@ export class Bbox{
             max = tFarX
         }
 
-        const yInverse = 1 / ray.direction.y
+        const yInverse = 1 / ray.getDirection().y
         const tNearY = (bbox.minY - ray.origin.y) * yInverse
         const tFarY  = (bbox.maxY - ray.origin.y) * yInverse
 
@@ -129,7 +129,7 @@ export class Bbox{
 
         if(max < min) return false
 
-        const zInverse = 1 / ray.direction.z
+        const zInverse = 1 / ray.getDirection().z
         const tNearZ = (bbox.minZ - ray.origin.z) * zInverse
         const tFarZ  = (bbox.maxZ - ray.origin.z) * zInverse
 

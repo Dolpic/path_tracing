@@ -1,6 +1,6 @@
 import { Vec3 } from "../primitives.js"
 import { Bbox } from "./structures/Bbox.js"
-import { Sbox } from "./structures/Sbox.js"
+import { Sbox } from "./structures/old/Sbox.js"
 
 const T_MIN = 0.0001
 
@@ -47,8 +47,8 @@ export class Sphere{
 
     hit(ray){
         const diff = Vec3.sub( Vec3.clone(ray.origin), this.center)
-        const a = Vec3.dot(ray.direction, ray.direction)
-        const b = 2*Vec3.dot(ray.direction, diff)
+        const a = Vec3.dot(ray.getDirection(), ray.getDirection())
+        const b = 2*Vec3.dot(ray.getDirection(), diff)
         const c = Vec3.dot(diff, diff) - this.radius*this.radius
         const discriminant = b*b - 4*a*c
         if(discriminant >= 0){
@@ -145,7 +145,7 @@ export class Triangle{
     }
 
     hit(ray){
-        const denominator = Vec3.dot(this.normal, ray.direction)
+        const denominator = Vec3.dot(this.normal, ray.getDirection())
         if(denominator == 0){
             return Infinity
         }
@@ -154,7 +154,7 @@ export class Triangle{
             return Infinity
         }
 
-        const p = Vec3.add(Vec3.mulScalar(Vec3.clone(ray.direction), t), ray.origin)
+        const p = Vec3.add(Vec3.mulScalar(Vec3.clone(ray.getDirection()), t), ray.origin)
 
         if( Vec3.dot( Vec3.sub(Vec3.clone(p), this.p1), this.n12) > 0 ||
             Vec3.dot( Vec3.sub(Vec3.clone(p), this.p2), this.n23) > 0 ||

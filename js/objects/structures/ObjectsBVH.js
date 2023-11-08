@@ -3,6 +3,10 @@ import { Bbox } from "./Bbox.js"
 export class ObjectsBVH{
     constructor(objectsList){
         this.objectsList = objectsList
+
+        /*this.totalChecks = 0
+        this.totalDepth = 0
+        this.nbCalls = 0*/
     }
 
     compute(){
@@ -148,7 +152,14 @@ export class ObjectsBVH{
 
     findIntersection(ray){
         let result = []
+        /*this.currentChecks = 0
+        this.currentDepth = 0*/
         this.findIntersectionRecursive(ray, this.bvh, result)
+
+        /*this.nbCalls++
+        this.totalChecks += this.currentChecks
+        this.totalDepth += this.currentDepth*/
+
         let t=Infinity, objHit=null
         for(let i=0; i<result.length; i++){
             const currentObj = result[i]
@@ -163,11 +174,15 @@ export class ObjectsBVH{
 
     findIntersectionRecursive(ray, bvh, acc){
         if(Bbox.hitRay(bvh[0], ray)){
+            //this.currentChecks++
             if(bvh.length == 2){
                 const objs = bvh[1]
                 for(let i=0; i<objs.length; i++){
                     acc.push(objs[i])
                 }
+                /*if(this.currentDepth < currentDepth){
+                    this.currentDepth = currentDepth
+                }*/
             }else{
                 this.findIntersectionRecursive(ray, bvh[1], acc)
                 this.findIntersectionRecursive(ray, bvh[2], acc)
@@ -194,6 +209,13 @@ export class ObjectsBVH{
             }
         }
         return false
+    }
+
+    printStats(){
+        console.log(` BVH :
+Average depth : ${this.totalDepth/this.nbCalls}
+Average checks : ${this.totalChecks/this.nbCalls}
+        `)
     }
 
 }

@@ -5,6 +5,7 @@ import Camera from "./Camera.js"
 import { deserialize as deserializeMaterial } from "./materials.js"; // TODO do the same as for deserialize in camera
 import Light from "./Lights.js";
 import { PathTracer } from "./Tracer.js";
+import Timer from "./Timer.js";
 
 onmessage = e => {
     switch(e.data.msg){
@@ -25,7 +26,9 @@ function init(id, scene, camera){
 
     const materials = scene.materials.map(m=>deserializeMaterial(m))
     const lights = scene.lights.map(l=>Light.deserialize(l))
-    const bvh = new ObjectsBVH(scene.shapes.map(s=>deserialize(s, materials)))
+    const objs = scene.shapes.map(s=>deserialize(s, materials))
+
+    const bvh = new ObjectsBVH(objs)
     bvh.compute()
     self.tracer = new PathTracer(bvh, lights, 100, true, true)
 }
@@ -43,6 +46,8 @@ function render(params){
 
     let previousIndex = 0
     let finalColor = Color.new()
+
+    
 
     postProgress(0)
     for(let y=startY; y<startY+chunkHeight; y++){

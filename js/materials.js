@@ -61,7 +61,7 @@ export class Diffuse{
         return {
             weight     : this.color,
             throughput : this.color,
-            direction  : Vec3.add(normal, Vec3.randomOnUnitSphere(ray.direction))
+            direction  : Vec3.add(normal, Vec3.randomOnUnitSphere(ray.getDirection()))
         }
     }
 }
@@ -74,7 +74,7 @@ export class Reflect{
     }
 
     sample(ray, normal){
-        let reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(ray.direction, normal) )
+        let reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(ray.getDirection(), normal) )
         if(this.granularity > 0){
             let reflectJiggle = Vec3.mulScalar( Vec3.randomOnUnitSphere(Vec3.new()), this.granularity) 
             Vec3.add(reflectDir, reflectJiggle )
@@ -83,7 +83,7 @@ export class Reflect{
         return {
             weight     : this.color,
             throughput : Color.ZERO,
-            direction  : Vec3.sub(ray.direction, reflectDir)
+            direction  : Vec3.sub(ray.getDirection(), reflectDir)
         }
     }
 }
@@ -98,7 +98,7 @@ export class Refract{
 
     sample(ray, normal){
         let etaRatio
-        let cosI = Vec3.dot(ray.direction, normal);
+        let cosI = Vec3.dot(ray.getDirection(), normal);
         ({etaRatio, cosI} = Utils.adjustIfExitingRay(cosI, this.etaFrom, this.etaTo, normal))
 
         let resultDir
@@ -106,10 +106,10 @@ export class Refract{
             etaRatio * Math.sqrt(1-cosI*cosI) > 1 || // Total internal reflection
             this.schlickApproximation(cosI, this.etaFrom, this.etaTo) > Math.random() // Schlick's approximation to the fresnel equations
         ){ 
-            resultDir = Utils.reflect(ray.direction, normal)
+            resultDir = Utils.reflect(ray.getDirection(), normal)
         }else{
             const cos_transmitted = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI)
-            const incidentPerpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cosI))
+            const incidentPerpendicular = Vec3.add(ray.getDirection(), Vec3.mulScalar( Vec3.clone(normal), cosI))
             const perpendicular = Vec3.mulScalar(incidentPerpendicular, etaRatio)
             const parallel = Vec3.mulScalar(normal, -cos_transmitted)
             resultDir = Vec3.add(perpendicular, parallel)
@@ -140,20 +140,20 @@ export class Dielectric{
 
     sample(ray, normal){
         let etaRatio
-        let cosI = Vec3.dot(ray.direction, normal);
+        let cosI = Vec3.dot(ray.getDirection(), normal);
         ({etaRatio, cosI} = Utils.adjustIfExitingRay(cosI, this.etaFrom, this.etaTo, normal))
 
         const cosT = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI)
         
         let resultDir
         if(cosT === false){ // Total internal reflection
-            resultDir = Utils.reflect(ray.direction, normal)
+            resultDir = Utils.reflect(ray.getDirection(), normal)
         }else{
             const reflectance = this.fresnelReflectance(etaRatio, cosI, cosT)
             if(reflectance > Math.random()){
-                resultDir = Utils.reflect(ray.direction, normal)
+                resultDir = Utils.reflect(ray.getDirection(), normal)
             }else{ // Transmit
-                const incidentPerpendicular = Vec3.add(ray.direction, Vec3.mulScalar( Vec3.clone(normal), cosI))
+                const incidentPerpendicular = Vec3.add(ray.getDirection(), Vec3.mulScalar( Vec3.clone(normal), cosI))
                 const perpendicular = Vec3.mulScalar(incidentPerpendicular, etaRatio)
                 const parallel = Vec3.mulScalar(normal, -cosT)
                 resultDir = Vec3.add(perpendicular, parallel)
@@ -185,7 +185,7 @@ export class Conductor{
 
     sample(ray, normal){
         let etaRatio
-        let cosI = Vec3.dot(ray.direction, normal)
+        let cosI = Vec3.dot(ray.getDirection(), normal)
 
         if(cosI > 0){
             etaRatio = Complex.div(Complex.clone(this.etaTo), this.etaFrom)
@@ -201,7 +201,7 @@ export class Conductor{
         return {
             weight     : Color.mulScalar( Color.clone(this.color), reflectance),
             throughput : Color.clone(this.color),
-            direction  : Utils.reflect(ray.direction, normal)
+            direction  : Utils.reflect(ray.getDirection(), normal)
         }
     }
 
