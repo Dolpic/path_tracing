@@ -1,31 +1,33 @@
 import {Ray, Vec3} from "./primitives.js"
+import Matrix from "./primitives/Matrix.js"
 
 export default class Camera{
-    constructor(aspect_ratio, fov, position, lensRadius=0, focalDistance=0){
-        this.aspect_ratio  = aspect_ratio
-        this.fov           = fov
-        this.position      = position
-        this.lensRadius    = lensRadius
-        this.focalDistance = focalDistance
+    constructor(position, rotation, lens, fieldOfView=45, aspectRatio=1){
+        this.aspectRatio  = aspectRatio
+        this.fieldOfView  = fieldOfView
+        this.position     = position
+        this.rotation     = rotation
+        this.lens         = lens
 
-        this.viewport_width  = 1
-        this.viewport_height = 1/aspect_ratio
-        this.focal_length    = (this.viewport_width/2) / Math.tan(fov*(Math.PI/180)/2)
-        this.ray             = new Ray(Vec3.new(...position), Vec3.new(0,0,0))
+        this.transformMatrix = new Matrix().transform([position.x, position.y, position.z], [rotation.x, rotation.y, rotation.z])
+        this.viewportWidth  = 1
+        this.viewportHeight = 1/aspectRatio
+        this.focalLength    = (this.viewportWidth/2) / Math.tan(fieldOfView*(Math.PI/180)/2)
+        this.ray            = new Ray(Vec3.new(0,0,0), Vec3.new(0,0,0))
     }
 
     static deserialize(c){
-        return new Camera(c.aspect_ratio, c.fov, c.position, c.lensRadius, c.focalDistance)
+        return new Camera(c.position, c.rotation, c.lens, c.fieldOfView, c.aspectRatio)
     }
 
     getRay(u, v){
-        this.ray.reset({
-            x: this.viewport_width*(u-0.5),
-            y: this.viewport_height*(0.5-v),
-            z: -this.focal_length
-        })
+        this.ray.reset(this.transformMatrix.applyToPoint({
+            x: this.viewportWidth*(u-0.5),
+            y: this.viewportHeight*(0.5-v),
+            z: -this.focalLength
+        }))
 
-        if(this.lensRadius > 0 && this.focalDistance > 0){
+        if(this.lens.radius > 0 && this.lens.focalDistance > 0){
             let lensU = Math.random()
             let lensV = Math.random()
             // TODO Not optimized but ok for now
@@ -34,9 +36,9 @@ export default class Camera{
                 lensV = Math.random()
             }
 
-            const focus_point = this.ray.at(-this.focalDistance/this.ray.getDirection().z)
-            this.ray.origin.x += this.lensRadius * lensU
-            this.ray.origin.y += this.lensRadius * lensV
+            const focus_point = this.ray.at(-this.lens.focalDistance/this.ray.getDirection().z)
+            this.ray.origin.x += this.lens.radius * lensU
+            this.ray.origin.y += this.lens.radius * lensV
             this.ray.setDirection(Vec3.new(
                 focus_point.x - this.ray.origin.x,
                 focus_point.y - this.ray.origin.y,

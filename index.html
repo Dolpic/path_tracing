@@ -13,7 +13,6 @@
                 <div id="parameters"></div>
                 <hr>
                 <div class="center flex-column">
-                    <div id="bottom_parameters"></div>
                     <button onclick="render()">Render</button>
                     <p id="progress"></p>
                 </div>
@@ -58,70 +57,75 @@
     <script type="module">
         import Slider from "./js/ui/slider.js"
         import Tabs   from "./js/ui/tabs.js"
-        import Camera from "./js/Camera.js"
         import Scenes from "./js/scenes.js"
         document.Slider = Slider
         document.Tabs   = Tabs
-        document.Camera = Camera
         document.Scenes = Scenes
     </script>
     <script>
         function init(){
             Slider = document.Slider
             Tabs   = document.Tabs
-            Camera = document.Camera
             Scenes = document.Scenes
 
             document.global_params = {
                 samples_per_pixel: 5,
                 nb_workers:        10,
                 chunk_size:        100,
-                camera:{
-                    fov: 45,
-                    lens_radius:0,
-                    focal_distance:0,
-                    x:0,
-                    y:0,
-                    z:0
-                }
+                scene: null
             }
 
-            let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Camera", "Scene", "Objects"], "Camera")
-            tabs.setContent("Camera", `
-                <p>Position</p>
-                <div id="camera_position"></div>
-                <p>Lens</p>
-                <div id="camera_lens"></div>
-            `)
-            tabs.setContent("Objects", `
-                <p>-- Tab under construction --</p>
-            `)
+            let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Scene", "Options"], "Scene")
             tabs.setContent("Scene", `
-                <select id="selectScene">
+                <p>Scene</p>
+                <select id="selectScene" onchange="sceneChanged()">
                     <option value="teapot" selected="selected">Teapot and Spheres</option>
                     <option value="dragons">Dragons</option>
+                    <option value="dragon">Dragon</option>
                 </select>
+                <hr>
+                <p>Camera</p>
+                <p>Position</p>
+                <div id="cameraPosition"></div>
+                <p>Rotation</p>
+                <div id="cameraRotation"></div>
+                <p>Lens</p>
+                <div id="cameraLens"></div>
+            `)
+            tabs.setContent("Options", `
+                <p>Rendering parameters</p>
+                <div id="renderingParameters"></div>
             `)
 
+            sceneChanged()
 
-
-            new Slider("camera_position", "X", 0, val=>document.global_params.camera.x=val, -20, 20, 1)
-            new Slider("camera_position", "Y", 0, val=>document.global_params.camera.y=val, -20, 20, 1)
-            new Slider("camera_position", "Z", 0, val=>document.global_params.camera.z=val, -20, 20)
-            new Slider("camera_lens", "Field of view",  45, val=>document.global_params.camera.fov=val,            5, 170)
-            new Slider("camera_lens", "Lens radius",    0,  val=>document.global_params.camera.lens_radius=val,    0, 1)
-            new Slider("camera_lens", "Focal distance", 0,  val=>document.global_params.camera.focal_distance=val, 0, 10)
-            new Slider("bottom_parameters", "Samples per pixel", 25,  val=>document.global_params.samples_per_pixel=val, 5, 150, 1, 0)
+            new Slider("cameraPosition", "X", 0, val=>document.global_params.scene.camera.position.x=val, -20, 20, 1)
+            new Slider("cameraPosition", "Y", 0, val=>document.global_params.scene.camera.position.y=val, -20, 20, 1)
+            new Slider("cameraPosition", "Z", 0, val=>document.global_params.scene.camera.position.z=val, -20, 20)
+            new Slider("cameraRotation", "X", 0, val=>document.global_params.scene.camera.rotation.x=val, -180, 180, 1)
+            new Slider("cameraRotation", "Y", 0, val=>document.global_params.scene.camera.rotation.y=val, -180, 180, 1)
+            new Slider("cameraRotation", "Z", 0, val=>document.global_params.scene.camera.rotation.z=val, -180, 180)
+            new Slider("cameraLens", "Field of view",  45, val=>document.global_params.scene.camera.fov=val,            5, 170)
+            new Slider("cameraLens", "Lens radius",    0,  val=>document.global_params.scene.camera.lens.radius=val,    0, 1)
+            new Slider("cameraLens", "Focal distance", 0,  val=>document.global_params.scene.camera.lens.focalDistance=val, 0, 10)
+            new Slider("renderingParameters", "Samples per pixel", 25,  val=>document.global_params.samples_per_pixel=val, 5, 150, 1, 0)
         }
 
-        function getScene(){
+        function sceneChanged(){
             const scene = document.getElementById("selectScene").value
             switch(scene){
                 case "teapot":
-                    return Scenes.Teapot()
+                    document.global_params.scene = Scenes.Teapot()
+                    break
                 case "dragons":
-                    return Scenes.Dragons()
+                    document.global_params.scene = Scenes.Dragons()
+                    break
+                case "dragon":
+                    document.global_params.scene = Scenes.Dragon()
+                    break
             }
+            console.log(scene)
+
         }
 
         function reset(){
@@ -131,8 +135,7 @@
             document.global_state = {
                 currentChunk: 0,
                 pixels_computed: 0,
-                workers: [],
-                scene: getScene()
+                workers: []
             }
         }
  
@@ -143,13 +146,6 @@
             const canvas    = document.getElementById("canvas")
             const ctx       = canvas.getContext("2d")
             const imageData = ctx.createImageData(canvas.width, canvas.height)
-            const camera = new Camera(
-                canvas.width/canvas.height, 
-                params.camera.fov, 
-                [params.camera.x, params.camera.y, params.camera.z],
-                params.camera.lens_radius,
-                params.camera.focal_distance
-            )
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
             for(let i=0; i<params.nb_workers; i++){
@@ -157,11 +153,11 @@
             }
 
             setProgressMessage("Loading scene ...")
-            Scenes.loadScene(document.global_state.scene).then(scene => {
+            Scenes.loadScene(document.global_params.scene).then(scene => {
                 setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
-                    w.postMessage({msg:"init", scene:scene, camera:camera, id:i})
+                    w.postMessage({msg:"init", scene:scene, id:i})
                     const next = getNextChunk()
                     if(next != null){
                         w.postMessage(next)
@@ -193,10 +189,8 @@
             const chunk_size = document.global_params.chunk_size
             const canvas_width  = document.getElementById("canvas").width
             const canvas_height = document.getElementById("canvas").height
-            const nb_chunks_width  = canvas_width  / chunk_size
-            const nb_chunks_height = canvas_height / chunk_size
-            const indexX = document.global_state.currentChunk%nb_chunks_width
-            const indexY = Math.floor(document.global_state.currentChunk/nb_chunks_height)
+            const indexX = document.global_state.currentChunk%(canvas_width/chunk_size)
+            const indexY = Math.floor(document.global_state.currentChunk/(canvas_height/chunk_size))
 
             const startX = indexX*chunk_size
             const startY = indexY*chunk_size

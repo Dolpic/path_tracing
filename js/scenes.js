@@ -9,6 +9,9 @@ export default class Scenes{
 
     static async loadScene(scene){
         if(scene.objects != undefined){
+            if(scene.shapes == undefined){
+                scene.shapes = []
+            }
             const objs = await Objects.loadObjects(scene.objects)
             scene.shapes = [...scene.shapes, ...objs.flat()]
         }
@@ -27,7 +30,16 @@ export default class Scenes{
             ],
             lights: [
                 new PointLight(Vec3.new(0, 4, -4), Color.new(0,1,0), 300)
-            ]
+            ],
+            camera: {
+                position: Vec3.new(0,0,0),
+                rotation: Vec3.new(0,0,0),
+                fieldOfView: 45,
+                lens:{
+                    radius: 0,
+                    focalDistance: 0,
+                }
+            }
         }
     }
 
@@ -81,12 +93,20 @@ export default class Scenes{
             ],
             lights: [
                 new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.8)
-            ]
+            ],
+            camera: {
+                position: Vec3.new(0,0,0),
+                rotation: Vec3.new(0,0,0),
+                fieldOfView: 45,
+                lens:{
+                    radius: 0,
+                    focalDistance: 0,
+                }
+            }
         }
     }
 
     static Dragons(){
-
         return {
             materials:[
                 new Diffuse(Color.new(0.8, 0.4, 0.3)),
@@ -108,12 +128,7 @@ export default class Scenes{
                     file: "dragon/dragon_very_simple",
                     material: 2,
                     transformMatrix: (new Matrix()).transform([1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
-                },
-                /*{
-                    file: "dragon/dragon_very_simple",
-                    material: dielectric,
-                    transformMatrix: (new Matrix()).transform([2, -1, -4], [0,0,0], [0.5,0.5,0.5])
-                },*/
+                }
             ],
             shapes:[
                 new Sphere( Vec3.new(0, -80.98, -4), 80, 0),
@@ -121,7 +136,47 @@ export default class Scenes{
             lights:[
                 new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.1),
                 new PointLight(Vec3.new(2, 5, -5), Color.new(1,1,1), 400)
-            ]
+            ],
+            camera: {
+                position: Vec3.new(0,0,0),
+                rotation: Vec3.new(0,0,0),
+                fieldOfView: 45,
+                lens:{
+                    radius: 0,
+                    focalDistance: 0,
+                }
+            }
+        }
+    }
+
+    static Dragon(material) {
+        return {
+            materials:[
+                new Diffuse(Color.new(0.8, 0.4, 0.3))
+            ],
+            objects:[
+                {
+                    file: "dragon/dragon_very_simple",
+                    material: 0,
+                    transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [0.2,0.2,0.2])
+                }
+            ],
+            shapes:[
+                new Sphere( Vec3.new(0, -80.98, -4), 80, 0),
+            ],
+            lights:[
+                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.1),
+                new PointLight(Vec3.new(2, 5, -5), Color.new(1,1,1), 400)
+            ],
+            camera: {
+                position: Vec3.new(0,0,0),
+                rotation: Vec3.new(0,0,0),
+                fieldOfView: 45,
+                lens:{
+                    radius: 0,
+                    focalDistance: 0,
+                }
+            }
         }
     }
 }

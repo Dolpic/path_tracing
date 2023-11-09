@@ -24,7 +24,7 @@ export default class Matrix{
         }
     }
 
-    transform(translation, rotation, scale){
+    transform(translation, rotation, scale=[1,1,1]){
         this.translate(...translation)
         this.rotate(...rotation)
         this.scale(...scale)
