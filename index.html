@@ -60,17 +60,20 @@
         import Scenes from "./js/scenes.js"
         import { Diffuse, Dielectric, Conductor} from "./js/materials.js"
 
-        let global_params = {
+        let PARAMS = {
             samples_per_pixel: 5,
             nb_workers:        10,
             chunk_size:        100,
-            scene: null
+            scene: Scenes.Teapot()
         }
 
-        let global_state = {
+        let STATE = {
             currentChunk: 0,
             pixels_computed: 0,
-            workers: []
+            workers: [],
+            ui:{
+                sliders:[]
+            }
         }
 
         document.init = () => {
@@ -78,10 +81,10 @@
             let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Scene", "Options"], "Scene")
             tabs.setContent("Scene", `
                 <p>Scene</p>
-                <select id="selectScene" onchange="sceneChanged()">
+                <select id="selectScene" onchange="document.sceneChanged()">
                     <option value="teapot" selected="selected">Teapot and Spheres</option>
                     <option value="dragons">Dragons</option>
-                    <option value="dragon">Dragon</option>
+                    <option value="materialTest">Material test</option>
                 </select>
                 <hr>
                 <p>Camera</p>
@@ -97,42 +100,57 @@
                 <div id="renderingParameters"></div>
             `)
 
-            sceneChanged()
+            STATE.ui.sliders=[
+                new Slider("cameraPosition", "X", 0, val=>PARAMS.scene.camera.position.x=val, -20, 20, 1),
+                new Slider("cameraPosition", "Y", 0, val=>PARAMS.scene.camera.position.y=val, -20, 20, 1),
+                new Slider("cameraPosition", "Z", 0, val=>PARAMS.scene.camera.position.z=val, -20, 20),
+                new Slider("cameraRotation", "X", 0, val=>PARAMS.scene.camera.rotation.x=val, -180, 180, 1),
+                new Slider("cameraRotation", "Y", 0, val=>PARAMS.scene.camera.rotation.y=val, -180, 180, 1),
+                new Slider("cameraRotation", "Z", 0, val=>PARAMS.scene.camera.rotation.z=val, -180, 180),
+                new Slider("cameraLens", "Field of view",  45, val=>PARAMS.scene.camera.fov=val,            5, 170),
+                new Slider("cameraLens", "Lens radius",    0,  val=>PARAMS.scene.camera.lens.radius=val,    0, 1),
+                new Slider("cameraLens", "Focal distance", 0,  val=>PARAMS.scene.camera.lens.focalDistance=val, 0, 10),
+                new Slider("renderingParameters", "Samples per pixel", 25,  val=>PARAMS.samples_per_pixel=val, 5, 150, 1, 0)
+            ]
 
-            new Slider("cameraPosition", "X", 0, val=>global_params.scene.camera.position.x=val, -20, 20, 1)
-            new Slider("cameraPosition", "Y", 0, val=>global_params.scene.camera.position.y=val, -20, 20, 1)
-            new Slider("cameraPosition", "Z", 0, val=>global_params.scene.camera.position.z=val, -20, 20)
-            new Slider("cameraRotation", "X", 0, val=>global_params.scene.camera.rotation.x=val, -180, 180, 1)
-            new Slider("cameraRotation", "Y", 0, val=>global_params.scene.camera.rotation.y=val, -180, 180, 1)
-            new Slider("cameraRotation", "Z", 0, val=>global_params.scene.camera.rotation.z=val, -180, 180)
-            new Slider("cameraLens", "Field of view",  45, val=>global_params.scene.camera.fov=val,            5, 170)
-            new Slider("cameraLens", "Lens radius",    0,  val=>global_params.scene.camera.lens.radius=val,    0, 1)
-            new Slider("cameraLens", "Focal distance", 0,  val=>global_params.scene.camera.lens.focalDistance=val, 0, 10)
-            new Slider("renderingParameters", "Samples per pixel", 25,  val=>global_params.samples_per_pixel=val, 5, 150, 1, 0)
+            document.sceneChanged()
         }
 
-        function sceneChanged(){
+        document.sceneChanged = () => {
             const scene = document.getElementById("selectScene").value
             switch(scene){
                 case "teapot":
-                    global_params.scene = Scenes.Teapot()
+                    PARAMS.scene = Scenes.Teapot()
                     break
                 case "dragons":
-                    global_params.scene = Scenes.Dragons()
+                    PARAMS.scene = Scenes.Dragons()
                     break
-                case "MaterialTestDragon":
-                    global_params.scene = Scenes.MaterialTestDragon()
+                case "materialTest":
+                    PARAMS.scene = Scenes.MaterialTest()
                     break
             }
-            console.log(scene)
-
+            updateCameraParams(PARAMS.scene)
         }
 
+        function updateCameraParams(scene){
+            STATE.ui.sliders[0].setValue(scene.camera.position.x)
+            STATE.ui.sliders[1].setValue(scene.camera.position.y)
+            STATE.ui.sliders[2].setValue(scene.camera.position.z)
+            STATE.ui.sliders[3].setValue(scene.camera.rotation.x)
+            STATE.ui.sliders[4].setValue(scene.camera.rotation.y)
+            STATE.ui.sliders[5].setValue(scene.camera.rotation.z)
+            STATE.ui.sliders[6].setValue(scene.camera.fieldOfView)
+            STATE.ui.sliders[7].setValue(scene.camera.lens.radius)
+            STATE.ui.sliders[8].setValue(scene.camera.lens.focalDistance)
+        }
+
+
+
         function reset(){
-            if(global_state != undefined){
-               global_state.workers.forEach(w => w.terminate())
+            if(STATE != undefined){
+               STATE.workers.forEach(w => w.terminate())
             }
-            global_state = {
+            STATE = {
                 currentChunk: 0,
                 pixels_computed: 0,
                 workers: []
@@ -141,19 +159,18 @@
  
         document.render = () => {
             reset()
-            const params = global_params
-            const workers = global_state.workers
+            const workers   = STATE.workers
             const canvas    = document.getElementById("canvas")
             const ctx       = canvas.getContext("2d")
             const imageData = ctx.createImageData(canvas.width, canvas.height)
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-            for(let i=0; i<params.nb_workers; i++){
+            for(let i=0; i<PARAMS.nb_workers; i++){
                 workers.push(new Worker("js/worker.js", {type: "module"}))
             }
 
             setProgressMessage("Loading scene ...")
-            Scenes.loadScene(global_params.scene).then(scene => {
+            Scenes.loadScene(PARAMS.scene).then(scene => {
                 setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
@@ -177,20 +194,20 @@
                         w.postMessage(next)
                     }
                 }else{
-                    global_state.pixels_computed += result.progress
-                    const nb_pixels = document.getElementById("canvas").width*document.getElementById("canvas").height
-                    const progress = 100*global_state.pixels_computed/nb_pixels
+                    STATE.pixels_computed += result.progress
+                    const nbPixels = document.getElementById("canvas").width*document.getElementById("canvas").height
+                    const progress = 100*STATE.pixels_computed/nbPixels
                     setProgressMessage(progress.toFixed(2)+" %")
                 }
             }
         }
 
         function getNextChunk(){
-            const chunk_size = global_params.chunk_size
+            const chunk_size = PARAMS.chunk_size
             const canvas_width  = document.getElementById("canvas").width
             const canvas_height = document.getElementById("canvas").height
-            const indexX = global_state.currentChunk%(canvas_width/chunk_size)
-            const indexY = Math.floor(global_state.currentChunk/(canvas_height/chunk_size))
+            const indexX = STATE.currentChunk%(canvas_width/chunk_size)
+            const indexY = Math.floor(STATE.currentChunk/(canvas_height/chunk_size))
 
             const startX = indexX*chunk_size
             const startY = indexY*chunk_size
@@ -200,7 +217,7 @@
             if(chunk_height <= 0){
                 return null
             }
-            global_state.currentChunk++
+            STATE.currentChunk++
             return {
                 msg: "start",
                 img_width:  canvas_width,
@@ -209,7 +226,7 @@
                 chunk_height: chunk_height,
                 startX: startX,
                 startY: startY,
-                samples_per_pixel: global_params.samples_per_pixel,
+                samples_per_pixel: PARAMS.samples_per_pixel,
             }
         }
 

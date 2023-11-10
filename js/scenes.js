@@ -149,10 +149,10 @@ export default class Scenes{
         }
     }
 
-    static MaterialTestDragon(material) {
+    static MaterialTest(material) {
         return {
             materials:[
-                new Diffuse(Color.new(0.8, 0.4, 0.3))
+                material
             ],
             objects:[
                 {

@@ -1,58 +1,73 @@
 export default class Slider{
-    constructor(parent_id, label, value=0, oninput="", min=0, max=1, step=0.0001, fractionDigits=2, updateAfterCreation=true){
-        this.parent_id = parent_id
+    constructor(parentId, label, value=0, oninput="", min=0, max=1, step=0.0001, fractionDigits=2, updateAfterCreation=false){
+        this.parent    = document.getElementById(parentId)
         this.label     = label,
         this.value     = value,
-        this.min       = min,
-        this.max       = max,
-        this.step      = step,
         this.oninput   = oninput
         this.fractionDigits = fractionDigits
         this.updateAfterCreation = updateAfterCreation
-        this.render()
+
+        this.containerTag = document.createElement('div')
+        this.containerTag.id = this.parentId+"_"+this.label
+
+        this.inputTag = document.createElement('input')
+        this.inputTag.id    = this.containerTag.id+"_input"
+        this.inputTag.type  = "range"
+        this.inputTag.value = this.value
+        this.inputTag.min   = min
+        this.inputTag.max   = max
+        this.inputTag.step  = step
+        this.inputTag.addEventListener("input", () => this.updateLabelValue())
+
+        this.valueTag = document.createElement('span')
+        this.valueTag.id = this.containerTag.id+"_value"
+        this.updateLabelValue()
+
+        this.init()
     }
 
-    render(){
-        let container_id = this.parent_id+"_"+this.label
-        let input_id = container_id+"_input"
-        let value_id = container_id+"_value"
-        if(document.getElementById(container_id) == null){
-            let div = document.createElement("div")
-            div.id = container_id
-            document.getElementById(this.parent_id).appendChild(div)
+    init(){
+        const table   = document.createElement('table')
+        const tr      = document.createElement('tr')
+        const tdLabel = document.createElement('td')
+        const tdInput = document.createElement('td')
+        const tdValue = document.createElement('td')
+        tdLabel.innerHTML = this.label
+        tdInput.appendChild(this.inputTag)
+        tdValue.appendChild(this.valueTag)
+        tr.appendChild(tdLabel)
+        tr.appendChild(tdInput)
+        tr.appendChild(tdValue)
+        table.appendChild(tr)
+        this.containerTag.appendChild(table)
+        this.parent.appendChild(this.containerTag)
+        if(this.updateAfterCreation){
+            this.oninput(this.value)
         }
+    }
 
-        document.getElementById(container_id).innerHTML = `
-        <table>
-            <tr>
-                <td>${this.label}</td>
-                <td>
-                    <input type="range" id="${input_id}" value="${this.value}" min="${this.min}" max="${this.max}" step="${this.step}"/>
-                </td>
-                <td id="${value_id}"> ${this.value.toFixed(this.fractionDigits)} </td>
-            </tr>
-        </table> `
-        document.getElementById(input_id).addEventListener("input", () => {
-            let val = parseFloat(document.getElementById(input_id).value)
-            document.getElementById(value_id).innerHTML=parseFloat(val).toFixed(this.fractionDigits);
-            this.oninput(val)
-        })
-        if(this.updateAfterCreation) this.oninput(this.value)
+    updateLabelValue(){
+        this.valueTag.innerHTML = parseFloat(this.inputTag.value).toFixed(this.fractionDigits)
+    }
+
+    setValue(val){
+        this.inputTag.value = val
+        this.updateLabelValue()
     }
 }
 
 export class SliderGroup{
-    constructor(parent_id, labels, values, oninput, min, max, step=0.0001, updateAfterCreation=true){
+    constructor(parentId, labels, values, oninput, min, max, step=0.0001, updateAfterCreation=true){
         this.sliders = []
         labels.forEach( (label,i) => {
-            document.getElementById(parent_id).innerHTML += `<div id="${parent_id}_${label}"></div>`
-            let callback = () => oninput(labels.map(l => document.getElementById(parent_id+"_"+l+"_input").value))
-            this.sliders.push(new Slider(parent_id, label, values[i], callback, min, max, step, (i==labels.length-1)&&updateAfterCreation)) 
+            document.getElementById(parentId).innerHTML += `<div id="${parentId}_${label}"></div>`
+            let callback = () => oninput(labels.map(l => document.getElementById(parentId+"_"+l+"_input").value))
+            this.sliders.push(new Slider(parentId, label, values[i], callback, min, max, step, (i==labels.length-1)&&updateAfterCreation)) 
         });
-        this.render()
+        this.update()
     }
 
-    render(){
-        this.sliders.forEach(s => s.render())
+    update(){
+        this.sliders.forEach(s => s.update())
     }
 }
