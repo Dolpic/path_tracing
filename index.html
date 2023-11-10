@@ -3,7 +3,7 @@
     <head>
         <link rel="stylesheet" href="style.css">
     </head>
-    <body onload="init()">
+    <body onload="document.init()">
         <h1 class="main_title">Path tracer</h1>
         <p class="subtitle">Web-based path tracer</p>
         <hr>
@@ -58,22 +58,22 @@
         import Slider from "./js/ui/slider.js"
         import Tabs   from "./js/ui/tabs.js"
         import Scenes from "./js/scenes.js"
-        document.Slider = Slider
-        document.Tabs   = Tabs
-        document.Scenes = Scenes
-    </script>
-    <script>
-        function init(){
-            Slider = document.Slider
-            Tabs   = document.Tabs
-            Scenes = document.Scenes
+        import { Diffuse, Dielectric, Conductor} from "./js/materials.js"
 
-            document.global_params = {
-                samples_per_pixel: 5,
-                nb_workers:        10,
-                chunk_size:        100,
-                scene: null
-            }
+        let global_params = {
+            samples_per_pixel: 5,
+            nb_workers:        10,
+            chunk_size:        100,
+            scene: null
+        }
+
+        let global_state = {
+            currentChunk: 0,
+            pixels_computed: 0,
+            workers: []
+        }
+
+        document.init = () => {
 
             let tabs = new Tabs(document.getElementById("parameters"), "main_tabs", ["Scene", "Options"], "Scene")
             tabs.setContent("Scene", `
@@ -99,29 +99,29 @@
 
             sceneChanged()
 
-            new Slider("cameraPosition", "X", 0, val=>document.global_params.scene.camera.position.x=val, -20, 20, 1)
-            new Slider("cameraPosition", "Y", 0, val=>document.global_params.scene.camera.position.y=val, -20, 20, 1)
-            new Slider("cameraPosition", "Z", 0, val=>document.global_params.scene.camera.position.z=val, -20, 20)
-            new Slider("cameraRotation", "X", 0, val=>document.global_params.scene.camera.rotation.x=val, -180, 180, 1)
-            new Slider("cameraRotation", "Y", 0, val=>document.global_params.scene.camera.rotation.y=val, -180, 180, 1)
-            new Slider("cameraRotation", "Z", 0, val=>document.global_params.scene.camera.rotation.z=val, -180, 180)
-            new Slider("cameraLens", "Field of view",  45, val=>document.global_params.scene.camera.fov=val,            5, 170)
-            new Slider("cameraLens", "Lens radius",    0,  val=>document.global_params.scene.camera.lens.radius=val,    0, 1)
-            new Slider("cameraLens", "Focal distance", 0,  val=>document.global_params.scene.camera.lens.focalDistance=val, 0, 10)
-            new Slider("renderingParameters", "Samples per pixel", 25,  val=>document.global_params.samples_per_pixel=val, 5, 150, 1, 0)
+            new Slider("cameraPosition", "X", 0, val=>global_params.scene.camera.position.x=val, -20, 20, 1)
+            new Slider("cameraPosition", "Y", 0, val=>global_params.scene.camera.position.y=val, -20, 20, 1)
+            new Slider("cameraPosition", "Z", 0, val=>global_params.scene.camera.position.z=val, -20, 20)
+            new Slider("cameraRotation", "X", 0, val=>global_params.scene.camera.rotation.x=val, -180, 180, 1)
+            new Slider("cameraRotation", "Y", 0, val=>global_params.scene.camera.rotation.y=val, -180, 180, 1)
+            new Slider("cameraRotation", "Z", 0, val=>global_params.scene.camera.rotation.z=val, -180, 180)
+            new Slider("cameraLens", "Field of view",  45, val=>global_params.scene.camera.fov=val,            5, 170)
+            new Slider("cameraLens", "Lens radius",    0,  val=>global_params.scene.camera.lens.radius=val,    0, 1)
+            new Slider("cameraLens", "Focal distance", 0,  val=>global_params.scene.camera.lens.focalDistance=val, 0, 10)
+            new Slider("renderingParameters", "Samples per pixel", 25,  val=>global_params.samples_per_pixel=val, 5, 150, 1, 0)
         }
 
         function sceneChanged(){
             const scene = document.getElementById("selectScene").value
             switch(scene){
                 case "teapot":
-                    document.global_params.scene = Scenes.Teapot()
+                    global_params.scene = Scenes.Teapot()
                     break
                 case "dragons":
-                    document.global_params.scene = Scenes.Dragons()
+                    global_params.scene = Scenes.Dragons()
                     break
-                case "dragon":
-                    document.global_params.scene = Scenes.Dragon()
+                case "MaterialTestDragon":
+                    global_params.scene = Scenes.MaterialTestDragon()
                     break
             }
             console.log(scene)
@@ -129,20 +129,20 @@
         }
 
         function reset(){
-            if(document.global_state != undefined){
-                document.global_state.workers.forEach(w => w.terminate())
+            if(global_state != undefined){
+               global_state.workers.forEach(w => w.terminate())
             }
-            document.global_state = {
+            global_state = {
                 currentChunk: 0,
                 pixels_computed: 0,
                 workers: []
             }
         }
  
-        function render(){
+        document.render = () => {
             reset()
-            const params = document.global_params
-            const workers = document.global_state.workers
+            const params = global_params
+            const workers = global_state.workers
             const canvas    = document.getElementById("canvas")
             const ctx       = canvas.getContext("2d")
             const imageData = ctx.createImageData(canvas.width, canvas.height)
@@ -153,7 +153,7 @@
             }
 
             setProgressMessage("Loading scene ...")
-            Scenes.loadScene(document.global_params.scene).then(scene => {
+            Scenes.loadScene(global_params.scene).then(scene => {
                 setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
@@ -177,20 +177,20 @@
                         w.postMessage(next)
                     }
                 }else{
-                    document.global_state.pixels_computed += result.progress
+                    global_state.pixels_computed += result.progress
                     const nb_pixels = document.getElementById("canvas").width*document.getElementById("canvas").height
-                    const progress = 100*document.global_state.pixels_computed/nb_pixels
+                    const progress = 100*global_state.pixels_computed/nb_pixels
                     setProgressMessage(progress.toFixed(2)+" %")
                 }
             }
         }
 
         function getNextChunk(){
-            const chunk_size = document.global_params.chunk_size
+            const chunk_size = global_params.chunk_size
             const canvas_width  = document.getElementById("canvas").width
             const canvas_height = document.getElementById("canvas").height
-            const indexX = document.global_state.currentChunk%(canvas_width/chunk_size)
-            const indexY = Math.floor(document.global_state.currentChunk/(canvas_height/chunk_size))
+            const indexX = global_state.currentChunk%(canvas_width/chunk_size)
+            const indexY = Math.floor(global_state.currentChunk/(canvas_height/chunk_size))
 
             const startX = indexX*chunk_size
             const startY = indexY*chunk_size
@@ -200,7 +200,7 @@
             if(chunk_height <= 0){
                 return null
             }
-            document.global_state.currentChunk++
+            global_state.currentChunk++
             return {
                 msg: "start",
                 img_width:  canvas_width,
@@ -209,12 +209,12 @@
                 chunk_height: chunk_height,
                 startX: startX,
                 startY: startY,
-                samples_per_pixel: document.global_params.samples_per_pixel,
+                samples_per_pixel: global_params.samples_per_pixel,
             }
         }
 
         function setProgressMessage(msg){
             document.getElementById("progress").innerHTML = msg
         }
-    </script>  
+    </script>
 </html>
