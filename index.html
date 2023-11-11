@@ -1,13 +1,10 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <link rel="stylesheet" href="style.css">
-    </head>
+    <head><link rel="stylesheet" href="style.css"></head>
     <body onload="document.init()">
         <h1 class="main_title">Path tracer</h1>
         <p class="subtitle">Web-based path tracer</p>
-        <hr>
-        <br>
+        <hr><br>
         <div id="main_content">
             <div>
                 <div id="parameters"></div>
@@ -87,6 +84,29 @@
                     <option value="materialTest">Material test</option>
                 </select>
                 <hr>
+                <div id="sceneParams">
+                    <div id="sceneParams_teapot"></div>
+                    <div id="sceneParams_dragons"></div>
+                    <div id="sceneParams_materialTest">
+                        <p>Material</p>
+                        <select>
+                            <option>Diffuse</option>
+                            <option>Dielectric - Reflection only</option>
+                            <option>Dielectric - Transmission only</option>
+                            <option>Dielectric</option>
+                            <option>Conductor</option>
+                        </select>
+                        <input type="color" id="materialColor" value="#e66465" />
+                        <p>Model</p>
+                        <select>
+                            <option>Teapot</option>
+                            <option>Dragon</option>
+                            <option>Suzanne</option>
+                            <option>Sphere</option>
+                        </select>  
+                    </div>
+                </div>
+                <hr>
                 <p>Camera</p>
                 <p>Position</p>
                 <div id="cameraPosition"></div>
@@ -129,6 +149,9 @@
                     PARAMS.scene = Scenes.MaterialTest()
                     break
             }
+            const params = Array.from(document.getElementById("sceneParams").children)
+            const currentId = "sceneParams_"+scene
+            params.forEach(p => p.style.display=(p.id==currentId?"inline-block":"none"))
             updateCameraParams(PARAMS.scene)
         }
 
