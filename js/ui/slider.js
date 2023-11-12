@@ -17,7 +17,10 @@ export default class Slider{
         this.inputTag.min   = min
         this.inputTag.max   = max
         this.inputTag.step  = step
-        this.inputTag.addEventListener("input", () => this.updateLabelValue())
+        this.inputTag.addEventListener("input", () => {
+            this.updateLabelValue()
+            this.oninput(parseFloat(this.inputTag.value))
+        })
 
         this.valueTag = document.createElement('span')
         this.valueTag.id = this.containerTag.id+"_value"

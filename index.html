@@ -55,16 +55,16 @@
         import Slider from "./js/ui/slider.js"
         import Tabs   from "./js/ui/tabs.js"
         import Scenes from "./js/scenes.js"
-        import { Diffuse, Dielectric, Conductor} from "./js/materials.js"
+        import { Diffuse, Reflect, Transmit, Dielectric, Conductor} from "./js/materials.js"
 
-        let PARAMS = {
+        document.PARAMS = {
             samples_per_pixel: 5,
             nb_workers:        10,
             chunk_size:        100,
-            scene: Scenes.Teapot()
+            camera: null
         }
 
-        let STATE = {
+        document.STATE = {
             currentChunk: 0,
             pixels_computed: 0,
             workers: [],
@@ -83,26 +83,27 @@
                     <option value="dragons">Dragons</option>
                     <option value="materialTest">Material test</option>
                 </select>
-                <hr>
                 <div id="sceneParams">
                     <div id="sceneParams_teapot"></div>
                     <div id="sceneParams_dragons"></div>
                     <div id="sceneParams_materialTest">
+                        <hr>
                         <p>Material</p>
-                        <select>
-                            <option>Diffuse</option>
-                            <option>Dielectric - Reflection only</option>
-                            <option>Dielectric - Transmission only</option>
-                            <option>Dielectric</option>
-                            <option>Conductor</option>
+                        <select id="sceneParams_materialTest_material">
+                            <option value="diffuse">Diffuse</option>
+                            <option value="reflection">Dielectric - Reflection only</option>
+                            <option value="transmission">Dielectric - Transmission only</option>
+                            <option value="dielectric">Dielectric</option>
+                            <option value="conductor">Conductor (gold)</option>
                         </select>
-                        <input type="color" id="materialColor" value="#e66465" />
+                        <input type="color" id="materialColor"/>
+                        <div id="sceneParams_materialTest_material_sliders"></div>
                         <p>Model</p>
-                        <select>
-                            <option>Teapot</option>
-                            <option>Dragon</option>
-                            <option>Suzanne</option>
-                            <option>Sphere</option>
+                        <select id="sceneParams_materialTest_model">
+                            <option value="teapot/teapot_smooth_corrected">Teapot</option>
+                            <option value="dragon/dragon_very_simple">Dragon</option>
+                            <option value="suzanne/suzanne_simple">Suzanne</option>
+                            <option value="sphere">Sphere</option>
                         </select>  
                     </div>
                 </div>
@@ -120,60 +121,91 @@
                 <div id="renderingParameters"></div>
             `)
 
-            STATE.ui.sliders=[
-                new Slider("cameraPosition", "X", 0, val=>PARAMS.scene.camera.position.x=val, -20, 20, 1),
-                new Slider("cameraPosition", "Y", 0, val=>PARAMS.scene.camera.position.y=val, -20, 20, 1),
-                new Slider("cameraPosition", "Z", 0, val=>PARAMS.scene.camera.position.z=val, -20, 20),
-                new Slider("cameraRotation", "X", 0, val=>PARAMS.scene.camera.rotation.x=val, -180, 180, 1),
-                new Slider("cameraRotation", "Y", 0, val=>PARAMS.scene.camera.rotation.y=val, -180, 180, 1),
-                new Slider("cameraRotation", "Z", 0, val=>PARAMS.scene.camera.rotation.z=val, -180, 180),
-                new Slider("cameraLens", "Field of view",  45, val=>PARAMS.scene.camera.fov=val,            5, 170),
-                new Slider("cameraLens", "Lens radius",    0,  val=>PARAMS.scene.camera.lens.radius=val,    0, 1),
-                new Slider("cameraLens", "Focal distance", 0,  val=>PARAMS.scene.camera.lens.focalDistance=val, 0, 10),
-                new Slider("renderingParameters", "Samples per pixel", 25,  val=>PARAMS.samples_per_pixel=val, 5, 150, 1, 0)
+            document.STATE.ui.sliders=[
+                new Slider("cameraPosition", "X", 0, val=>document.PARAMS.camera.position.x=val, -2, 2, 0.01),
+                new Slider("cameraPosition", "Y", 0, val=>document.PARAMS.camera.position.y=val, -2, 2, 0.01),
+                new Slider("cameraPosition", "Z", 0, val=>document.PARAMS.camera.position.z=val, -2, 2, 0.01),
+                new Slider("cameraRotation", "X", 0, val=>document.PARAMS.camera.rotation.x=val, -180, 180, 1),
+                new Slider("cameraRotation", "Y", 0, val=>document.PARAMS.camera.rotation.y=val, -180, 180, 1),
+                new Slider("cameraRotation", "Z", 0, val=>document.PARAMS.camera.rotation.z=val, -180, 180, 1),
+                new Slider("cameraLens", "Field of view",  45, val=>document.PARAMS.camera.fov=val,            5, 170),
+                new Slider("cameraLens", "Lens radius",    0,  val=>document.PARAMS.camera.lens.radius=val,    0, 1),
+                new Slider("cameraLens", "Focal distance", 0,  val=>document.PARAMS.camera.lens.focalDistance=val, 0, 10),
+                new Slider("renderingParameters", "Samples per pixel", 25,  val=>document.PARAMS.samples_per_pixel=val, 5, 150, 1, 0),
+                new Slider("sceneParams_materialTest_material_sliders", "Refraction Index", 1.5, ()=>{}, 0.1, 5, 0.01)
             ]
 
             document.sceneChanged()
+
         }
 
         document.sceneChanged = () => {
+            document.PARAMS.camera = {...getScene().camera}
             const scene = document.getElementById("selectScene").value
-            switch(scene){
-                case "teapot":
-                    PARAMS.scene = Scenes.Teapot()
-                    break
-                case "dragons":
-                    PARAMS.scene = Scenes.Dragons()
-                    break
-                case "materialTest":
-                    PARAMS.scene = Scenes.MaterialTest()
-                    break
-            }
             const params = Array.from(document.getElementById("sceneParams").children)
             const currentId = "sceneParams_"+scene
             params.forEach(p => p.style.display=(p.id==currentId?"inline-block":"none"))
-            updateCameraParams(PARAMS.scene)
+            updateCameraParams(document.PARAMS.camera)
         }
 
-        function updateCameraParams(scene){
-            STATE.ui.sliders[0].setValue(scene.camera.position.x)
-            STATE.ui.sliders[1].setValue(scene.camera.position.y)
-            STATE.ui.sliders[2].setValue(scene.camera.position.z)
-            STATE.ui.sliders[3].setValue(scene.camera.rotation.x)
-            STATE.ui.sliders[4].setValue(scene.camera.rotation.y)
-            STATE.ui.sliders[5].setValue(scene.camera.rotation.z)
-            STATE.ui.sliders[6].setValue(scene.camera.fieldOfView)
-            STATE.ui.sliders[7].setValue(scene.camera.lens.radius)
-            STATE.ui.sliders[8].setValue(scene.camera.lens.focalDistance)
+        function getScene(){
+            switch(document.getElementById("selectScene").value){
+                case "teapot":
+                    return Scenes.Teapot()
+                case "dragons":
+                    return Scenes.Dragons()
+                case "materialTest":
+                    const model = document.getElementById("sceneParams_materialTest_model").value
+                    const color = colorHexToRGB(document.getElementById("materialColor").value)
+                    const IoR = document.getElementById("sceneParams_materialTest_material_sliders").value
+                    let material
+                    switch(document.getElementById("sceneParams_materialTest_material").value){
+                        case "diffuse":
+                            material = new Diffuse(color)
+                            break
+                        case "reflection":
+                            material = new Reflect(color)
+                            break
+                        case "transmission":
+                            material = new Transmit(color, 1, IoR)
+                            break
+                        case "dielectric":
+                            material = new Dielectric(color, 1, IoR)
+                            break
+                        case "conductor":
+                            material = new Conductor(color)
+                            break
+                    }
+                    return Scenes.MaterialTest(material, model)
+            }
         }
 
+        function colorHexToRGB(color){
+            var val = parseInt(color.substring(1), 16);
+            return {
+                r: ((val >> 16) & 255) / 255,
+                g: ((val >> 8) & 255) / 255,
+                b: (val & 255) / 255
+            }
+        }
 
+        function updateCameraParams(camera){
+            document.STATE.ui.sliders[0].setValue(camera.position.x)
+            document.STATE.ui.sliders[1].setValue(camera.position.y)
+            document.STATE.ui.sliders[2].setValue(camera.position.z)
+            document.STATE.ui.sliders[3].setValue(camera.rotation.x)
+            document.STATE.ui.sliders[4].setValue(camera.rotation.y)
+            document.STATE.ui.sliders[5].setValue(camera.rotation.z)
+            document.STATE.ui.sliders[6].setValue(camera.fieldOfView)
+            document.STATE.ui.sliders[7].setValue(camera.lens.radius)
+            document.STATE.ui.sliders[8].setValue(camera.lens.focalDistance)
+        }
 
         function reset(){
-            if(STATE != undefined){
-               STATE.workers.forEach(w => w.terminate())
+            if(document.STATE != undefined){
+                document.STATE.workers.forEach(w => w.terminate())
             }
-            STATE = {
+            document.STATE = {
                 currentChunk: 0,
                 pixels_computed: 0,
                 workers: []
@@ -182,18 +214,19 @@
  
         document.render = () => {
             reset()
-            const workers   = STATE.workers
+            const workers   = document.STATE.workers
             const canvas    = document.getElementById("canvas")
             const ctx       = canvas.getContext("2d")
             const imageData = ctx.createImageData(canvas.width, canvas.height)
             ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-            for(let i=0; i<PARAMS.nb_workers; i++){
+            for(let i=0; i<document.PARAMS.nb_workers; i++){
                 workers.push(new Worker("js/worker.js", {type: "module"}))
             }
 
             setProgressMessage("Loading scene ...")
-            Scenes.loadScene(PARAMS.scene).then(scene => {
+            Scenes.loadScene(getScene(), document.PARAMS.camera).then(scene => {
+                console.log(scene)
                 setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)
@@ -217,20 +250,20 @@
                         w.postMessage(next)
                     }
                 }else{
-                    STATE.pixels_computed += result.progress
+                    document.STATE.pixels_computed += result.progress
                     const nbPixels = document.getElementById("canvas").width*document.getElementById("canvas").height
-                    const progress = 100*STATE.pixels_computed/nbPixels
+                    const progress = 100*document.STATE.pixels_computed/nbPixels
                     setProgressMessage(progress.toFixed(2)+" %")
                 }
             }
         }
 
         function getNextChunk(){
-            const chunk_size = PARAMS.chunk_size
+            const chunk_size = document.PARAMS.chunk_size
             const canvas_width  = document.getElementById("canvas").width
             const canvas_height = document.getElementById("canvas").height
-            const indexX = STATE.currentChunk%(canvas_width/chunk_size)
-            const indexY = Math.floor(STATE.currentChunk/(canvas_height/chunk_size))
+            const indexX = document.STATE.currentChunk%(canvas_width/chunk_size)
+            const indexY = Math.floor(document.STATE.currentChunk/(canvas_height/chunk_size))
 
             const startX = indexX*chunk_size
             const startY = indexY*chunk_size
@@ -240,7 +273,7 @@
             if(chunk_height <= 0){
                 return null
             }
-            STATE.currentChunk++
+            document.STATE.currentChunk++
             return {
                 msg: "start",
                 img_width:  canvas_width,
@@ -249,7 +282,7 @@
                 chunk_height: chunk_height,
                 startX: startX,
                 startY: startY,
-                samples_per_pixel: PARAMS.samples_per_pixel,
+                samples_per_pixel: document.PARAMS.samples_per_pixel,
             }
         }
 

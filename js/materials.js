@@ -3,7 +3,7 @@ import { Vec3, Color, Complex } from "./primitives.js"
 export const BxDF = {
     Diffuse: 0,
     Reflect: 1,
-    Refract: 2,
+    Transmit: 2,
     Dielectric: 3,
     Conductor: 4
 }
@@ -14,7 +14,7 @@ export function deserialize(mat){
             return new Diffuse(mat.color)
         case BxDF.Reflect:
             return new Reflect(mat.color, mat.granular_factor)
-        case BxDF.Refract:
+        case BxDF.Transmit:
             return new Refract(mat.color, mat.etaFrom, mat.eta_To)
         case BxDF.Dielectric:
             return new Dielectric(mat.color, mat.etaFrom, mat.etaTo)
@@ -88,9 +88,9 @@ export class Reflect{
     }
 }
 
-export class Refract{
+export class Transmit{
     constructor(color, etaFrom=1, etaTo=1){
-        this.type    = BxDF.Refract
+        this.type    = BxDF.Transmit
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo

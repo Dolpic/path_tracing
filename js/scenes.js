@@ -7,13 +7,16 @@ import {PointLight, EnvironmentalLight} from "./Lights.js"
 
 export default class Scenes{
 
-    static async loadScene(scene){
+    static async loadScene(scene, camera=null){
         if(scene.objects != undefined){
             if(scene.shapes == undefined){
                 scene.shapes = []
             }
             const objs = await Objects.loadObjects(scene.objects)
             scene.shapes = [...scene.shapes, ...objs.flat()]
+        }
+        if(camera != null){
+            scene.camera = camera
         }
         return scene
     }
@@ -149,15 +152,16 @@ export default class Scenes{
         }
     }
 
-    static MaterialTest(material) {
+    static MaterialTest(material, model) {
         return {
             materials:[
+                new Diffuse(Color.new(0.8, 0.4, 0.3)),
                 material
             ],
             objects:[
                 {
-                    file: "dragon/dragon_very_simple",
-                    material: 0,
+                    file: model,
+                    material: 1,
                     transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [0.2,0.2,0.2])
                 }
             ],
