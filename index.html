@@ -55,6 +55,7 @@
         import Slider from "./js/ui/slider.js"
         import Tabs   from "./js/ui/tabs.js"
         import Scenes from "./js/scenes.js"
+        import { Complex } from "./js/primitives.js"
         import { Diffuse, Reflect, Transmit, Dielectric, Conductor} from "./js/materials.js"
 
         document.PARAMS = {
@@ -96,7 +97,7 @@
                             <option value="dielectric">Dielectric</option>
                             <option value="conductor">Conductor (gold)</option>
                         </select>
-                        <input type="color" id="materialColor"/>
+                        <input type="color" id="materialColor" value="#ffffff"/>
                         <div id="sceneParams_materialTest_material_sliders"></div>
                         <p>Model</p>
                         <select id="sceneParams_materialTest_model">
@@ -122,13 +123,13 @@
             `)
 
             document.STATE.ui.sliders=[
-                new Slider("cameraPosition", "X", 0, val=>document.PARAMS.camera.position.x=val, -2, 2, 0.01),
-                new Slider("cameraPosition", "Y", 0, val=>document.PARAMS.camera.position.y=val, -2, 2, 0.01),
-                new Slider("cameraPosition", "Z", 0, val=>document.PARAMS.camera.position.z=val, -2, 2, 0.01),
+                new Slider("cameraPosition", "X", 0, val=>document.PARAMS.camera.position.x=val, -4, 4, 0.01),
+                new Slider("cameraPosition", "Y", 0, val=>document.PARAMS.camera.position.y=val, -4, 4, 0.01),
+                new Slider("cameraPosition", "Z", 0, val=>document.PARAMS.camera.position.z=val, -4, 4, 0.01),
                 new Slider("cameraRotation", "X", 0, val=>document.PARAMS.camera.rotation.x=val, -180, 180, 1),
                 new Slider("cameraRotation", "Y", 0, val=>document.PARAMS.camera.rotation.y=val, -180, 180, 1),
                 new Slider("cameraRotation", "Z", 0, val=>document.PARAMS.camera.rotation.z=val, -180, 180, 1),
-                new Slider("cameraLens", "Field of view",  45, val=>document.PARAMS.camera.fov=val,            5, 170),
+                new Slider("cameraLens", "Field of view",  45, val=>document.PARAMS.camera.fieldOfView=val,            5, 170),
                 new Slider("cameraLens", "Lens radius",    0,  val=>document.PARAMS.camera.lens.radius=val,    0, 1),
                 new Slider("cameraLens", "Focal distance", 0,  val=>document.PARAMS.camera.lens.focalDistance=val, 0, 10),
                 new Slider("renderingParameters", "Samples per pixel", 25,  val=>document.PARAMS.samples_per_pixel=val, 5, 150, 1, 0),
@@ -157,7 +158,7 @@
                 case "materialTest":
                     const model = document.getElementById("sceneParams_materialTest_model").value
                     const color = colorHexToRGB(document.getElementById("materialColor").value)
-                    const IoR = document.getElementById("sceneParams_materialTest_material_sliders").value
+                    const IoR = document.STATE.ui.sliders[10].getValue()
                     let material
                     switch(document.getElementById("sceneParams_materialTest_material").value){
                         case "diffuse":
@@ -173,7 +174,7 @@
                             material = new Dielectric(color, 1, IoR)
                             break
                         case "conductor":
-                            material = new Conductor(color)
+                            material = new Conductor(color, Complex.fromReal(1), Complex.new(0.2, 3))
                             break
                     }
                     return Scenes.MaterialTest(material, model)
@@ -205,11 +206,9 @@
             if(document.STATE != undefined){
                 document.STATE.workers.forEach(w => w.terminate())
             }
-            document.STATE = {
-                currentChunk: 0,
-                pixels_computed: 0,
-                workers: []
-            }
+            document.STATE.currentChunk = 0
+            document.STATE.pixels_computed = 0
+            document.STATE.workers = []
         }
  
         document.render = () => {
@@ -226,7 +225,6 @@
 
             setProgressMessage("Loading scene ...")
             Scenes.loadScene(getScene(), document.PARAMS.camera).then(scene => {
-                console.log(scene)
                 setProgressMessage("Starting workers ...")
                 workers.forEach( (w,i) => {
                     w.onmessage = onWorkerMessage(w)

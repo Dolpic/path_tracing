@@ -15,7 +15,7 @@ export function deserialize(mat){
         case BxDF.Reflect:
             return new Reflect(mat.color, mat.granular_factor)
         case BxDF.Transmit:
-            return new Refract(mat.color, mat.etaFrom, mat.eta_To)
+            return new Transmit(mat.color, mat.etaFrom, mat.eta_To)
         case BxDF.Dielectric:
             return new Dielectric(mat.color, mat.etaFrom, mat.etaTo)
         case BxDF.Conductor:

@@ -173,8 +173,8 @@ export default class Scenes{
                 new PointLight(Vec3.new(2, 5, -5), Color.new(1,1,1), 400)
             ],
             camera: {
-                position: Vec3.new(0,0,0),
-                rotation: Vec3.new(0,0,0),
+                position: Vec3.new(1.3, 0, -3.75),
+                rotation: Vec3.new(-34, 45, 25),
                 fieldOfView: 45,
                 lens:{
                     radius: 0,

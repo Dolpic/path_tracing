@@ -57,6 +57,10 @@ export default class Slider{
         this.inputTag.value = val
         this.updateLabelValue()
     }
+
+    getValue(){
+        return this.inputTag.value
+    }
 }
 
 export class SliderGroup{

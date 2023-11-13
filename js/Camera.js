@@ -13,7 +13,8 @@ export default class Camera{
         this.viewportWidth  = 1
         this.viewportHeight = 1/aspectRatio
         this.focalLength    = (this.viewportWidth/2) / Math.tan(fieldOfView*(Math.PI/180)/2)
-        this.ray            = new Ray(Vec3.new(0,0,0), Vec3.new(0,0,0))
+
+        this.ray            = new Ray(Vec3.new(position.x,position.y,position.z), Vec3.new(0,0,0))
     }
 
     static deserialize(c){
@@ -21,11 +22,14 @@ export default class Camera{
     }
 
     getRay(u, v){
-        this.ray.reset(this.transformMatrix.applyToPoint({
+        const viewportPosition = this.transformMatrix.applyToPoint({
             x: this.viewportWidth*(u-0.5),
             y: this.viewportHeight*(0.5-v),
             z: -this.focalLength
-        }))
+        })
+        Vec3.sub(viewportPosition, this.ray.defaultOrigin)
+
+        this.ray.reset(viewportPosition)
 
         if(this.lens.radius > 0 && this.lens.focalDistance > 0){
             let lensU = Math.random()
