@@ -58,7 +58,7 @@ export default class Scenes{
                 {
                     file: "teapot/teapot_smooth_corrected",
                     material: 1,
-                    transformMatrix: (new Matrix()).transform([0, -1, -4], [0,0,0], [0.5,0.5,0.5])
+                    transformMatrix: (new Matrix()).transform([0, -1, -4], [0,0,0], [3, 3, 3])
                 }
             ],
             shapes:[
@@ -120,17 +120,17 @@ export default class Scenes{
                 {
                     file: "dragon/dragon_very_simple",
                     material: 0,
-                    transformMatrix: (new Matrix()).transform([-1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
+                    transformMatrix: (new Matrix()).transform([-1, -1, -5], [0,-90,0], [1.5, 1.5, 1.5])
                 },
                 {
                     file: "dragon/dragon_very_simple",
                     material: 1,
-                    transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [0.2,0.2,0.2])
+                    transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [1.5, 1.5, 1.5])
                 },
                 {
                     file: "dragon/dragon_very_simple",
                     material: 2,
-                    transformMatrix: (new Matrix()).transform([1, -1, -5], [0,-90,0], [0.2,0.2,0.2])
+                    transformMatrix: (new Matrix()).transform([1, -1, -5], [0,-90,0], [1.5, 1.5, 1.5])
                 }
             ],
             shapes:[
@@ -162,15 +162,15 @@ export default class Scenes{
                 {
                     file: model,
                     material: 1,
-                    transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [0.2,0.2,0.2])
+                    transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [1, 1, 1])
                 }
             ],
             shapes:[
                 new Sphere( Vec3.new(0, -80.98, -4), 80, 0),
             ],
             lights:[
-                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.1),
-                new PointLight(Vec3.new(2, 5, -5), Color.new(1,1,1), 400)
+                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.2),
+                new PointLight(Vec3.new(4, 3, -7), Color.new(1,1,1), 300)
             ],
             camera: {
                 position: Vec3.new(1.3, 0, -3.75),
