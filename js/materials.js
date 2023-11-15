@@ -5,7 +5,8 @@ export const BxDF = {
     Reflect: 1,
     Transmit: 2,
     Dielectric: 3,
-    Conductor: 4
+    Conductor: 4,
+    RoughDielectric: 5
 }
 
 export function deserialize(mat){
@@ -229,5 +230,15 @@ export class Conductor{
         )
         
         return (Complex.modulusSquared(r_parallel) + Complex.modulusSquared(r_perpendicular))/2
+    }
+}
+
+export class RoughDielectric{
+    constructor(color, etaFrom=1, etaTo=1, roughness=0){
+        this.type      = BxDF.RoughDielectric
+        this.color     = color
+        this.etaFrom   = etaFrom
+        this.etaTo     = etaTo  
+        this.roughness = roughness
     }
 }
