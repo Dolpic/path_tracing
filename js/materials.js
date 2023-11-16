@@ -233,6 +233,7 @@ export class Conductor{
     }
 }
 
+// Uses the Torrance-Sparrow BSDF based on the Trowbridge-Reitz microfacet model
 export class RoughDielectric{
     constructor(color, etaFrom=1, etaTo=1, roughness=0){
         this.type      = BxDF.RoughDielectric
@@ -240,5 +241,43 @@ export class RoughDielectric{
         this.etaFrom   = etaFrom
         this.etaTo     = etaTo  
         this.roughness = roughness
+    }
+
+    sample(ray, normal){
+
+        let cosI = Vec3.dot(ray.getDirection(), normal);
+        ({etaRatio, cosI} = Utils.adjustIfExitingRay(cosI, this.etaFrom, this.etaTo, normal))
+
+        const alphaX = 2
+        const alphaY = 2
+
+        ray.direction *= alphaX
+        ray.direction *= alphaY
+        Vec3.normalize(ray.direction)
+
+        let p = Vec3.new()
+        Vec3.random(p)
+        while(p.x*p.x + p.y*p.y >= 1){
+            Vec3.random(p)
+        }
+        p.y = p.y*(1+cosI)/2 + math.sqrt(1-p.x*p.x)*(1-cosI)/2
+
+        const T1 = Vec3.normalize(Vec3.cross(Vec3.new(0,0,1), ray.direction))
+        const T2 = Vec3.cross(T1, ray.direction)
+
+        let pSphere = Vec3.new()
+        pSphere.x = p.x
+        pSphere.y = Vec3.mul(T2, p.y)
+        pSphere.z = 0
+
+
+
+
+
+        /*return {
+            weight     : ,
+            throughput : ,
+            direction  : 
+        }*/
     }
 }
