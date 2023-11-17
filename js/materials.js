@@ -265,10 +265,11 @@ export class RoughDielectric{
         const T1 = Vec3.normalize(Vec3.cross(Vec3.new(0,0,1), ray.direction))
         const T2 = Vec3.cross(T1, ray.direction)
 
-        let pSphere = Vec3.new()
-        pSphere.x = p.x
-        pSphere.y = Vec3.mul(T2, p.y)
-        pSphere.z = 0
+        let x = Vec3.mulScalar(Vec3.new(1,0,0), p.x * alphaX)
+        let y = Vec3.mul(T2, p.y) * alphaY
+        let z = Vec3.mulScalar(ray.direction, math.sqrt(1-(p.x*p.x+p.y*p.y)) )
+
+        let finalDirection = Vec3.add(Vec3.add(x,y),z)
 
 
 
