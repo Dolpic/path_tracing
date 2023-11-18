@@ -21,6 +21,8 @@ export function deserialize(mat){
             return new Dielectric(mat.color, mat.etaFrom, mat.etaTo)
         case BxDF.Conductor:
             return new Conductor(mat.color, mat.etaFrom, mat.etaTo)
+        case BxDF.RoughDielectric:
+            return new RoughDielectric(mat.color, mat.etaFrom, mat.etaTo, mat.roughness)
         default:
             console.error(`Unknown material type : ${mat.type}`)
     }
@@ -241,18 +243,20 @@ export class RoughDielectric{
         this.etaFrom   = etaFrom
         this.etaTo     = etaTo  
         this.roughness = roughness
+
+        this.alphaX = 0.0000001
+        this.alphaY = 0.0000001
     }
 
     sample(ray, normal){
-
+        let etaRatio
         let cosI = Vec3.dot(ray.getDirection(), normal);
         ({etaRatio, cosI} = Utils.adjustIfExitingRay(cosI, this.etaFrom, this.etaTo, normal))
 
-        const alphaX = 2
-        const alphaY = 2
+        //const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(normal), ray.direction))
+        //const xAxis = Vec3.normalize(Vec3.cross(Vec3.clone(normal), yAxis))
 
-        ray.direction *= alphaX
-        ray.direction *= alphaY
+        Vec3.mul(ray.direction, Vec3.new(this.alphaX , this.alphaY, 1))
         Vec3.normalize(ray.direction)
 
         let p = Vec3.new()
@@ -260,25 +264,58 @@ export class RoughDielectric{
         while(p.x*p.x + p.y*p.y >= 1){
             Vec3.random(p)
         }
-        p.y = p.y*(1+cosI)/2 + math.sqrt(1-p.x*p.x)*(1-cosI)/2
+        p.y = p.y*(1+cosI)/2 + Math.sqrt(1-p.x*p.x)*(1-cosI)/2
 
-        const T1 = Vec3.normalize(Vec3.cross(Vec3.new(0,0,1), ray.direction))
-        const T2 = Vec3.cross(T1, ray.direction)
+        //console.log(ray.direction)
 
-        let x = Vec3.mulScalar(Vec3.new(1,0,0), p.x * alphaX)
-        let y = Vec3.mul(T2, p.y) * alphaY
-        let z = Vec3.mulScalar(ray.direction, math.sqrt(1-(p.x*p.x+p.y*p.y)) )
+        const T1 = Vec3.normalize(Vec3.cross(Vec3.clone(normal), ray.direction))
+        const T2 = Vec3.normalize(Vec3.cross(Vec3.clone(T1), ray.direction))
+
+        let x = Vec3.mulScalar(T1, p.x)
+        let y = Vec3.mulScalar(T2, p.y)
+        let z = Vec3.mulScalar(Vec3.clone(ray.direction), -Math.sqrt(1-(p.x*p.x+p.y*p.y)) )
 
         let finalDirection = Vec3.add(Vec3.add(x,y),z)
 
+       Vec3.mul(finalDirection, Vec3.new(this.alphaX , this.alphaY, 1))
 
+        const cosI_out = Vec3.dot(finalDirection, normal)
 
+        //console.log(finalDirection)
 
+        const cosPhi = 0
+        //const factor = this.TrowbridgeReitz(cosI, cosPhi)*this.MaskingShadowing(cosI, cosPhi, cosI_out, cosPhi)/(4*cosI*cosI_out)
 
-        /*return {
-            weight     : ,
-            throughput : ,
-            direction  : 
-        }*/
+        const factor = this.TrowbridgeReitz(cosI, cosPhi)/(4*cosI*cosI_out)
+        //console.log(factor)
+
+        return {
+            weight     : Color.clone(this.color), //Color.mulScalar(Color.clone(this.color), factor),
+            throughput : Color.ZERO, //Color.clone(this.color),
+            direction  : finalDirection
+        }
+    }
+
+    TrowbridgeReitz(cosI, cosPhi){
+        const tanISqr = 1/(cosI*cosI) - 1
+        const cosPhiSqr = cosPhi*cosPhi
+        const sinPhiSqr =  1 - cosPhiSqr
+
+        const cosI4 = Math.pow(cosI, 4)
+        const parenthesis = 1+tanISqr*( cosPhiSqr/(this.alphaX*this.alphaX) + sinPhiSqr/(this.alphaY*this.alphaY))
+        return 1/(Math.PI*this.alphaX*this.alphaY*cosI4*parenthesis*parenthesis)
+
+    }
+
+    MaskingLambda(cosI, cosPhi){
+        const tanISqr = 1/(cosI*cosI) - 1
+        const cosPhiSqr = cosPhi*cosPhi
+        const sinPhiSqr =  1 - cosPhiSqr
+        const alpha = Math.sqrt(this.alphaX*this.alphaX*cosPhiSqr + this.alphaY*this.alphaY*sinPhiSqr)
+        return (Math.sqrt(1+alpha*alpha*tanISqr)-1)/2
+    }
+
+    MaskingShadowing(cosI_in, cosPhi_in, cosI_out, cosPhi_out){
+        return 1/(1+this.MaskingLambda(cosI_in, cosPhi_in)+this.MaskingLambda(cosI_out, cosPhi_out))
     }
 }
