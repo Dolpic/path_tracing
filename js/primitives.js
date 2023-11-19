@@ -149,6 +149,12 @@ export class Vec3 {
         self.z *= other.z
         return self
     }
+    static div(self, other){
+        self.x /= other.x
+        self.y /= other.y
+        self.z /= other.z
+        return self
+    }
 
     static mulScalar(self, scalar){
         self.x *= scalar
@@ -234,6 +240,10 @@ export class Vec3 {
         Vec3.normalize(Vec3.randomSpheric(self))
         return self
     }
+
+    static X = {x:1, y:0, z:0}
+    static Y = {x:0, y:1, z:0}
+    static Z = {x:0, y:0, z:1}
 }
 
 export class Color{

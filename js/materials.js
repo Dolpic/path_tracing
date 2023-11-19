@@ -70,7 +70,7 @@ export class Diffuse{
 }
 
 export class Reflect{
-    constructor(color, granularity=0.1){
+    constructor(color, granularity=0){
         this.type        = BxDF.Reflect
         this.color       = color
         this.granularity = granularity
@@ -244,8 +244,8 @@ export class RoughDielectric{
         this.etaTo     = etaTo  
         this.roughness = roughness
 
-        this.alphaX = 0.0000001
-        this.alphaY = 0.0000001
+        this.alphaX = 0.1
+        this.alphaY = 0.1
     }
 
     sample(ray, normal){
@@ -253,11 +253,20 @@ export class RoughDielectric{
         let cosI = Vec3.dot(ray.getDirection(), normal);
         ({etaRatio, cosI} = Utils.adjustIfExitingRay(cosI, this.etaFrom, this.etaTo, normal))
 
-        //const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(normal), ray.direction))
-        //const xAxis = Vec3.normalize(Vec3.cross(Vec3.clone(normal), yAxis))
+        Vec3.mulScalar(ray.direction, -1)
 
-        Vec3.mul(ray.direction, Vec3.new(this.alphaX , this.alphaY, 1))
-        Vec3.normalize(ray.direction)
+        let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
+        if(normal.x == 0 && normal.y == 0){
+            xAxis = Vec3.new(1, 0, 0)
+            console.log("FALLBACK")
+        }
+        const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(xAxis), normal))
+
+        const dir_local = Vec3.new(Vec3.dot(ray.direction, xAxis), Vec3.dot(ray.direction, yAxis), Vec3.dot(ray.direction, normal))
+        //Vec3.normalize(dir_local)
+        const normal_local = Vec3.new(0,0,1)
+
+        Vec3.mul(dir_local, Vec3.new(this.alphaX , this.alphaY, 1))
 
         let p = Vec3.new()
         Vec3.random(p)
@@ -266,28 +275,37 @@ export class RoughDielectric{
         }
         p.y = p.y*(1+cosI)/2 + Math.sqrt(1-p.x*p.x)*(1-cosI)/2
 
-        //console.log(ray.direction)
+        //p.x=0
+        //p.y=0
 
-        const T1 = Vec3.normalize(Vec3.cross(Vec3.clone(normal), ray.direction))
-        const T2 = Vec3.normalize(Vec3.cross(Vec3.clone(T1), ray.direction))
+        const T1 = Vec3.normalize(Vec3.cross(Vec3.clone(normal_local), dir_local))
+        const T2 = Vec3.normalize(Vec3.cross(Vec3.clone(T1), dir_local))
 
-        let x = Vec3.mulScalar(T1, p.x)
-        let y = Vec3.mulScalar(T2, p.y)
-        let z = Vec3.mulScalar(Vec3.clone(ray.direction), -Math.sqrt(1-(p.x*p.x+p.y*p.y)) )
+        let x = Vec3.mulScalar(T2, p.x)
+        let y = Vec3.mulScalar(T1, p.y)
+        let z = Vec3.mulScalar(Vec3.clone(dir_local), Math.sqrt(1-(p.x*p.x+p.y*p.y)) )
+        let sum = Vec3.add(Vec3.add(x,y),z)
+        Vec3.mul(sum, Vec3.new(this.alphaX , this.alphaY, 1))
 
-        let finalDirection = Vec3.add(Vec3.add(x,y),z)
+        const dir = Vec3.add( 
+            Vec3.add(
+                Vec3.mulScalar(xAxis, sum.x), 
+                Vec3.mulScalar(yAxis, sum.y), 
+            ),
+            Vec3.mulScalar(Vec3.clone(normal), sum.z)
+        ) 
+        //Vec3.normalize(dir)
 
-       Vec3.mul(finalDirection, Vec3.new(this.alphaX , this.alphaY, 1))
+        Vec3.mulScalar(dir, -1)
+        let finalDirection = Utils.reflect( dir, normal )
 
         const cosI_out = Vec3.dot(finalDirection, normal)
 
-        //console.log(finalDirection)
 
         const cosPhi = 0
         //const factor = this.TrowbridgeReitz(cosI, cosPhi)*this.MaskingShadowing(cosI, cosPhi, cosI_out, cosPhi)/(4*cosI*cosI_out)
 
         const factor = this.TrowbridgeReitz(cosI, cosPhi)/(4*cosI*cosI_out)
-        //console.log(factor)
 
         return {
             weight     : Color.clone(this.color), //Color.mulScalar(Color.clone(this.color), factor),
