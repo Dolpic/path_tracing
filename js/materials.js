@@ -263,7 +263,7 @@ export class RoughDielectric{
         const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(xAxis), normal))
 
         const dir_local = Vec3.new(Vec3.dot(ray.direction, xAxis), Vec3.dot(ray.direction, yAxis), Vec3.dot(ray.direction, normal))
-        //Vec3.normalize(dir_local)
+        Vec3.normalize(dir_local)
         const normal_local = Vec3.new(0,0,1)
 
         Vec3.mul(dir_local, Vec3.new(this.alphaX , this.alphaY, 1))
@@ -275,29 +275,26 @@ export class RoughDielectric{
         }
         p.y = p.y*(1+cosI)/2 + Math.sqrt(1-p.x*p.x)*(1-cosI)/2
 
-        //p.x=0
-        //p.y=0
-
         const T1 = Vec3.normalize(Vec3.cross(Vec3.clone(normal_local), dir_local))
         const T2 = Vec3.normalize(Vec3.cross(Vec3.clone(T1), dir_local))
 
-        let x = Vec3.mulScalar(T2, p.x)
-        let y = Vec3.mulScalar(T1, p.y)
+        let x = Vec3.mulScalar(T1, p.x)
+        let y = Vec3.mulScalar(T2, p.y)
         let z = Vec3.mulScalar(Vec3.clone(dir_local), Math.sqrt(1-(p.x*p.x+p.y*p.y)) )
         let sum = Vec3.add(Vec3.add(x,y),z)
         Vec3.mul(sum, Vec3.new(this.alphaX , this.alphaY, 1))
-
-        const dir = Vec3.add( 
+        Vec3.normalize(sum)
+        const new_normal = Vec3.add( 
             Vec3.add(
                 Vec3.mulScalar(xAxis, sum.x), 
                 Vec3.mulScalar(yAxis, sum.y), 
             ),
             Vec3.mulScalar(Vec3.clone(normal), sum.z)
         ) 
-        //Vec3.normalize(dir)
+        Vec3.normalize(new_normal)
 
-        Vec3.mulScalar(dir, -1)
-        let finalDirection = Utils.reflect( dir, normal )
+        Vec3.mulScalar(new_normal, -1)
+        let finalDirection = Utils.reflect( Vec3.mulScalar(ray.direction, -1), new_normal )
 
         const cosI_out = Vec3.dot(finalDirection, normal)
 
