@@ -56,7 +56,7 @@
         import Tabs   from "./js/ui/tabs.js"
         import Scenes from "./js/scenes.js"
         import { Complex } from "./js/primitives.js"
-        import { Diffuse, Reflect, Transmit, Dielectric, Conductor, RoughDielectric} from "./js/materials.js"
+        import { Diffuse, Reflect, Transmit, Dielectric, Conductor, RoughConductor} from "./js/materials.js"
 
         document.PARAMS = {
             samples_per_pixel: 5,
@@ -96,7 +96,7 @@
                             <option value="transmission">Dielectric - Transmission only</option>
                             <option value="dielectric">Dielectric</option>
                             <option value="conductor">Conductor (gold)</option>
-                            <option value="roughDielectric">Rough Dielectric</option>
+                            <option value="roughConductor">Rough Conductor</option>
                         </select>
                         <input type="color" id="materialColor" value="#ffffff"/>
                         <div id="sceneParams_materialTest_material_sliders"></div>
@@ -177,8 +177,8 @@
                         case "conductor":
                             material = new Conductor(color, Complex.fromReal(1), Complex.new(0.2, 3))
                             break
-                        case "roughDielectric":
-                            material = new RoughDielectric(color, 1, IoR, 1)
+                        case "roughConductor":
+                            material = new RoughConductor(color, 1, IoR, 1)
                     }
                     return Scenes.MaterialTest(material, model)
             }

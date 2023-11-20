@@ -6,7 +6,7 @@ export const BxDF = {
     Transmit: 2,
     Dielectric: 3,
     Conductor: 4,
-    RoughDielectric: 5
+    RoughConductor: 5
 }
 
 export function deserialize(mat){
@@ -21,8 +21,8 @@ export function deserialize(mat){
             return new Dielectric(mat.color, mat.etaFrom, mat.etaTo)
         case BxDF.Conductor:
             return new Conductor(mat.color, mat.etaFrom, mat.etaTo)
-        case BxDF.RoughDielectric:
-            return new RoughDielectric(mat.color, mat.etaFrom, mat.etaTo, mat.roughness)
+        case BxDF.RoughConductor:
+            return new RoughConductor(mat.color, mat.etaFrom, mat.etaTo, mat.roughness)
         default:
             console.error(`Unknown material type : ${mat.type}`)
     }
@@ -203,7 +203,7 @@ export class Conductor{
 
         return {
             weight     : Color.mulScalar( Color.clone(this.color), reflectance),
-            throughput : Color.clone(this.color),
+            throughput : Color.mulScalar( Color.clone(this.color), 1-reflectance),
             direction  : Utils.reflect(ray.getDirection(), normal)
         }
     }
@@ -236,16 +236,16 @@ export class Conductor{
 }
 
 // Uses the Torrance-Sparrow BSDF based on the Trowbridge-Reitz microfacet model
-export class RoughDielectric{
+export class RoughConductor{
     constructor(color, etaFrom=1, etaTo=1, roughness=0){
-        this.type      = BxDF.RoughDielectric
+        this.type      = BxDF.RoughConductor
         this.color     = color
         this.etaFrom   = etaFrom
         this.etaTo     = etaTo  
         this.roughness = roughness
 
-        this.alphaX = 0.1
-        this.alphaY = 0.1
+        this.alphaX = 0.05
+        this.alphaY = 0.05
     }
 
     sample(ray, normal){
@@ -253,18 +253,56 @@ export class RoughDielectric{
         let cosI = Vec3.dot(ray.getDirection(), normal);
         ({etaRatio, cosI} = Utils.adjustIfExitingRay(cosI, this.etaFrom, this.etaTo, normal))
 
-        Vec3.mulScalar(ray.direction, -1)
+        const microfacetNormal = this.microfacetNormal(ray.direction, normal, cosI)
+        const direction_out = Utils.reflect(ray.direction, microfacetNormal)
+
+        const cosI_out = Vec3.dot(direction_out, microfacetNormal)
 
         let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
         if(normal.x == 0 && normal.y == 0){
-            xAxis = Vec3.new(1, 0, 0)
-            console.log("FALLBACK")
+            xAxis = Vec3.X
+        }
+        const reverseDir = Vec3.mulScalar(Vec3.clone(ray.direction), -1)
+        const dir_local = this.toLocal(reverseDir, normal)
+        const dir_local_plane = Vec3.normalize(Vec3.new(dir_local.x, dir_local.y, 0))
+        const cosPhi_in = Vec3.dot(xAxis, dir_local_plane)
+
+
+        const dir_local_out = this.toLocal(direction_out, normal)
+        const dir_local_out_plane = Vec3.normalize(Vec3.new(dir_local_out.x, dir_local_out.y, 0))
+        const cosPhi_out = Vec3.dot(xAxis, dir_local_out_plane)
+
+        const G = this.MaskingShadowing(cosI, cosPhi_in, cosI_out, cosPhi_out)
+        const factor = this.TrowbridgeReitz(cosI, cosPhi_in)*G/(4*cosI*cosI_out)
+
+        return {
+            weight     : Color.mulScalar(Color.clone(this.color), G/G),
+            throughput : Color.mulScalar(Color.clone(this.color), factor/factor), 
+            direction  : direction_out
+        }
+    }
+
+    toLocal(v, normal){
+        let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
+        if(normal.x == 0 && normal.y == 0){
+            xAxis = Vec3.X
         }
         const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(xAxis), normal))
+        return Vec3.normalize(Vec3.new(Vec3.dot(v, xAxis), Vec3.dot(v, yAxis), Vec3.dot(v, normal))) 
+    }
 
-        const dir_local = Vec3.new(Vec3.dot(ray.direction, xAxis), Vec3.dot(ray.direction, yAxis), Vec3.dot(ray.direction, normal))
-        Vec3.normalize(dir_local)
-        const normal_local = Vec3.new(0,0,1)
+    toGlobal(v, normal){
+        let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
+        if(normal.x == 0 && normal.y == 0){
+            xAxis = Vec3.X
+        }
+        const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(xAxis), normal))
+        return Vec3.add( Vec3.add(Vec3.mulScalar(xAxis, v.x), Vec3.mulScalar(yAxis, v.y)), Vec3.mulScalar(Vec3.clone(normal), v.z) )
+    }
+
+    microfacetNormal(baseDirection, normal, cosI){
+        const reverseDir = Vec3.mulScalar(Vec3.clone(baseDirection), -1)
+        const dir_local = this.toLocal(reverseDir, normal)
 
         Vec3.mul(dir_local, Vec3.new(this.alphaX , this.alphaY, 1))
 
@@ -275,41 +313,17 @@ export class RoughDielectric{
         }
         p.y = p.y*(1+cosI)/2 + Math.sqrt(1-p.x*p.x)*(1-cosI)/2
 
-        const T1 = Vec3.normalize(Vec3.cross(Vec3.clone(normal_local), dir_local))
+        const T1 = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Z), dir_local))
         const T2 = Vec3.normalize(Vec3.cross(Vec3.clone(T1), dir_local))
 
-        let x = Vec3.mulScalar(T1, p.x)
-        let y = Vec3.mulScalar(T2, p.y)
-        let z = Vec3.mulScalar(Vec3.clone(dir_local), Math.sqrt(1-(p.x*p.x+p.y*p.y)) )
-        let sum = Vec3.add(Vec3.add(x,y),z)
+        let sum = Vec3.add(
+            Vec3.add(Vec3.mulScalar(T1, p.x), Vec3.mulScalar(T2, p.y)),
+            Vec3.mulScalar(Vec3.clone(dir_local), Math.sqrt(1-(p.x*p.x+p.y*p.y)) )
+        )
         Vec3.mul(sum, Vec3.new(this.alphaX , this.alphaY, 1))
-        Vec3.normalize(sum)
-        const new_normal = Vec3.add( 
-            Vec3.add(
-                Vec3.mulScalar(xAxis, sum.x), 
-                Vec3.mulScalar(yAxis, sum.y), 
-            ),
-            Vec3.mulScalar(Vec3.clone(normal), sum.z)
-        ) 
-        Vec3.normalize(new_normal)
 
-        Vec3.mulScalar(new_normal, -1)
-        let finalDirection = Utils.reflect( Vec3.mulScalar(ray.direction, -1), new_normal )
-
-        const cosI_out = Vec3.dot(finalDirection, normal)
-
-
-        const cosPhi = 0
-        //const factor = this.TrowbridgeReitz(cosI, cosPhi)*this.MaskingShadowing(cosI, cosPhi, cosI_out, cosPhi)/(4*cosI*cosI_out)
-
-        const factor = this.TrowbridgeReitz(cosI, cosPhi)/(4*cosI*cosI_out)
-
-        return {
-            weight     : Color.clone(this.color), //Color.mulScalar(Color.clone(this.color), factor),
-            throughput : Color.ZERO, //Color.clone(this.color),
-            direction  : finalDirection
-        }
-    }
+        return Vec3.normalize(this.toGlobal(sum, normal))
+    } 
 
     TrowbridgeReitz(cosI, cosPhi){
         const tanISqr = 1/(cosI*cosI) - 1
@@ -317,9 +331,8 @@ export class RoughDielectric{
         const sinPhiSqr =  1 - cosPhiSqr
 
         const cosI4 = Math.pow(cosI, 4)
-        const parenthesis = 1+tanISqr*( cosPhiSqr/(this.alphaX*this.alphaX) + sinPhiSqr/(this.alphaY*this.alphaY))
+        const parenthesis = 1+tanISqr*(cosPhiSqr/(this.alphaX*this.alphaX) + sinPhiSqr/(this.alphaY*this.alphaY))
         return 1/(Math.PI*this.alphaX*this.alphaY*cosI4*parenthesis*parenthesis)
-
     }
 
     MaskingLambda(cosI, cosPhi){

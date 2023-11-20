@@ -153,21 +153,31 @@ export default class Scenes{
     }
 
     static MaterialTest(material, model) {
-        return {
-            materials:[
-                new Diffuse(Color.new(0.8, 0.4, 0.3)),
-                material
-            ],
-            objects:[
+        let objects
+        let shapes
+        if(model == "sphere"){
+            objects = []
+            shapes = [
+                new Sphere( Vec3.new(0, -80.98, -4), 80, 0),
+                new Sphere( Vec3.new(0, -0.7 , -5), 0.3, 1),
+            ]
+        }else{
+            objects = [
                 {
                     file: model,
                     material: 1,
                     transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [1, 1, 1])
                 }
+            ]
+            shapes = [new Sphere( Vec3.new(0, -80.98, -4), 80, 0)]
+        }
+        return {
+            materials:[
+                new Diffuse(Color.new(0.8, 0.4, 0.3)),
+                material
             ],
-            shapes:[
-                new Sphere( Vec3.new(0, -80.98, -4), 80, 0),
-            ],
+            objects:objects,
+            shapes:shapes,
             lights:[
                 new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.2),
                 new PointLight(Vec3.new(4, 3, -7), Color.new(1,1,1), 300)
