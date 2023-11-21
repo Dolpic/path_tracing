@@ -20,7 +20,7 @@ export function deserialize(mat){
         case BxDF.Dielectric:
             return new Dielectric(mat.color, mat.etaFrom, mat.etaTo)
         case BxDF.Conductor:
-            return new Conductor(mat.color, mat.etaFrom, mat.etaTo)
+            return new Conductor(mat.color, mat.etaFrom, mat.etaTo, mat.roughnessX, mat.roughnessY)
         case BxDF.RoughConductor:
             return new RoughConductor(mat.color, mat.etaFrom, mat.etaTo, mat.roughness)
         default:
@@ -179,11 +179,13 @@ export class Dielectric{
 }
 
 export class Conductor{
-    constructor(color, etaFrom, etaTo){
+    constructor(color, etaFrom, etaTo, roughnessX=0, roughnessY=0){
         this.type    = BxDF.Conductor
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
+        this.roughnessX = roughnessX
+        this.roughnessY = roughnessY
     }
 
     sample(ray, normal){
@@ -201,10 +203,20 @@ export class Conductor{
         const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI)
         const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI), cosT)
 
+        const weight = Color.mulScalar( Color.clone(this.color), reflectance)
+        const throughput = Color.mulScalar( Color.clone(this.color), 1-reflectance)
+
+        this.roughnessX = 0.75
+        this.roughnessY = 0.75
+        const normalMicrofacet = this.microfacetNormal(ray.direction, normal, cosI)
+        const directionMicrofacet = Utils.reflect(ray.getDirection(), Vec3.clone(normalMicrofacet))
+
+        //console.log(Vec3.dot(normalMicrofacet, normal))
+
         return {
-            weight     : Color.mulScalar( Color.clone(this.color), reflectance),
-            throughput : Color.mulScalar( Color.clone(this.color), 1-reflectance),
-            direction  : Utils.reflect(ray.getDirection(), normal)
+            weight     : weight,
+            throughput : throughput,
+            direction  : directionMicrofacet
         }
     }
 
@@ -233,6 +245,63 @@ export class Conductor{
         
         return (Complex.modulusSquared(r_parallel) + Complex.modulusSquared(r_perpendicular))/2
     }
+
+    toLocal(v, normal){
+        let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
+        if(normal.x == 0 && normal.y == 0){
+            xAxis = Vec3.X
+        }
+        const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(xAxis), normal))
+        return Vec3.normalize(Vec3.new(Vec3.dot(v, xAxis), Vec3.dot(v, yAxis), Vec3.dot(v, normal))) 
+    }
+
+    toGlobal(v, normal){
+        let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
+        if(normal.x == 0 && normal.y == 0){
+            xAxis = Vec3.X
+        }
+        const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(xAxis), normal))
+        return Vec3.add( Vec3.add(Vec3.mulScalar(xAxis, v.x), Vec3.mulScalar(yAxis, v.y)), Vec3.mulScalar(Vec3.clone(normal), v.z) )
+    }
+
+    microfacetNormal(baseDirection, normal, cosI){
+
+        const reverseDir = Vec3.mulScalar(Vec3.clone(baseDirection), -1)
+        const dir_local = this.toLocal(reverseDir, normal)
+
+        Vec3.mul(dir_local, Vec3.new(this.roughnessX , this.roughnessY, 1))
+        Vec3.normalize(dir_local)
+
+        //console.log(Vec3.dot(Vec3.Z, dir_local))
+
+        let p = Vec3.new()
+        Vec3.random(p)
+        while(p.x*p.x + p.y*p.y >= 1){
+            Vec3.random(p)
+        }
+        //p.y = p.y*(1+cosI)/2 + Math.sqrt(1-p.x*p.x)*(1-cosI)/2
+        const h = Math.sqrt(1-p.x*p.x)
+        const x = (1+dir_local.z)/2
+        //p.y = p.y*x + h*(1-x)
+        p.y = (p.y+h)*(h+h*dir_local.z)/(2*h)-(h*dir_local.z)
+
+        //p.y = 0
+
+        const T1 = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Z), dir_local))
+        const T2 = Vec3.normalize(Vec3.cross(Vec3.clone(T1), dir_local))
+
+        let normalLocal = Vec3.add(
+            Vec3.add(Vec3.mulScalar(T1, p.x), Vec3.mulScalar(T2, p.y)),
+            Vec3.mulScalar(Vec3.clone(dir_local), Math.sqrt(1-(p.x*p.x+p.y*p.y)) )
+        )
+
+        Vec3.mul(normalLocal, Vec3.new(this.roughnessX , this.roughnessY, 1))
+
+        //console.log(Vec3.dot(Vec3.Z, normalLocal))
+
+        return Vec3.normalize(this.toGlobal(normalLocal, normal))
+    } 
+
 }
 
 // Uses the Torrance-Sparrow BSDF based on the Trowbridge-Reitz microfacet model
