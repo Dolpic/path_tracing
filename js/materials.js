@@ -63,8 +63,9 @@ export class Diffuse{
     sample(ray, normal){
         return {
             weight     : this.color,
-            throughput : this.color,
-            direction  : Vec3.add(normal, Vec3.randomOnUnitSphere(ray.getDirection()))
+            throughput : Color.mulScalar(Color.clone(this.color), 1/Math.PI),
+            direction  : Vec3.add(Vec3.clone(normal), Vec3.randomOnUnitSphere(ray.getDirection())),
+            normal     : Vec3.clone(normal)
         }
     }
 }
@@ -86,7 +87,8 @@ export class Reflect{
         return {
             weight     : this.color,
             throughput : Color.ZERO,
-            direction  : Vec3.sub(ray.getDirection(), reflectDir)
+            direction  : Vec3.sub(ray.getDirection(), reflectDir),
+            normal     : Vec3.clone(normal)
         }
     }
 }
@@ -121,7 +123,8 @@ export class Transmit{
         return {
             weight     : this.color,
             throughput : Color.ZERO,
-            direction  : resultDir
+            direction  : resultDir,
+            normal     : Vec3.clone(normal)
         }
     }
 
@@ -164,10 +167,10 @@ export class Dielectric{
         }
 
         return {
-            // Weight is always 1, as the reflectance compensates with the PDF
             weight     : this.color,
             throughput : Color.ZERO,
-            direction  : resultDir
+            direction  : resultDir,
+            normal     : Vec3.clone(normal)
         }
     }
 
@@ -200,23 +203,51 @@ export class Conductor{
             cosI *= -1
         }
 
-        const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI)
-        const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI), cosT)
 
-        const weight = Color.mulScalar( Color.clone(this.color), reflectance)
-        const throughput = Color.mulScalar( Color.clone(this.color), 1-reflectance)
+            this.roughnessX = 1
+            this.roughnessY = 1
+            const normal_m = this.microfacetNormal(ray.direction, normal)
+            const direction_out_m = Utils.reflect(ray.getDirection(), Vec3.clone(normal_m))
+            const cosI_out_m = Vec3.dot(direction_out_m, normal_m)  
+            let cosI_in_m = Vec3.dot(ray.direction, normal_m)
+            if(cosI_in_m < 0){
+                cosI_in_m *= -1
+            }
 
-        this.roughnessX = 0.75
-        this.roughnessY = 0.75
-        const normalMicrofacet = this.microfacetNormal(ray.direction, normal, cosI)
-        const directionMicrofacet = Utils.reflect(ray.getDirection(), Vec3.clone(normalMicrofacet))
+            let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
+            if(normal.x == 0 && normal.y == 0){
+                xAxis = Vec3.X
+            }
+            const reverseDir = Vec3.mulScalar(Vec3.clone(ray.direction), -1)
+            const dir_local = this.toLocal(reverseDir, normal)
+            const dir_local_plane = Vec3.normalize(Vec3.new(dir_local.x, dir_local.y, 0))
+            const cosPhi_in = Vec3.dot(xAxis, dir_local_plane)
 
-        //console.log(Vec3.dot(normalMicrofacet, normal))
+
+            const dir_local_out = this.toLocal(direction_out_m, normal)
+            const dir_local_out_plane = Vec3.normalize(Vec3.new(dir_local_out.x, dir_local_out.y, 0))
+            const cosPhi_out = Vec3.dot(xAxis, dir_local_out_plane)
+
+
+            const G = this.MaskingShadowing(cosI, cosPhi_in, cosI_out_m, cosPhi_out)
+            const cosPhi_in_m = cosPhi_in // TODO correct that
+            const D = this.TrowbridgeReitz(cosI_in_m, cosPhi_in_m)
+            const factor = D*G/(4*cosI*cosI_out_m)
+
+
+            const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI)
+            const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI), cosT)
+
+
+            const weight = Color.mulScalar( Color.clone(this.color), reflectance*G) // TODO Wrong
+            const throughput = Color.mulScalar( Color.clone(this.color), reflectance*factor)
+
 
         return {
-            weight     : weight,
-            throughput : throughput,
-            direction  : directionMicrofacet
+            weight     : weight, //this.color,
+            throughput : throughput, //Color.ZERO,
+            direction  : direction_out_m,
+            normal     : Vec3.clone(normal)
         }
     }
 
@@ -264,44 +295,56 @@ export class Conductor{
         return Vec3.add( Vec3.add(Vec3.mulScalar(xAxis, v.x), Vec3.mulScalar(yAxis, v.y)), Vec3.mulScalar(Vec3.clone(normal), v.z) )
     }
 
-    microfacetNormal(baseDirection, normal, cosI){
-
+    microfacetNormal(baseDirection, normal){
         const reverseDir = Vec3.mulScalar(Vec3.clone(baseDirection), -1)
         const dir_local = this.toLocal(reverseDir, normal)
 
         Vec3.mul(dir_local, Vec3.new(this.roughnessX , this.roughnessY, 1))
         Vec3.normalize(dir_local)
 
-        //console.log(Vec3.dot(Vec3.Z, dir_local))
-
         let p = Vec3.new()
         Vec3.random(p)
         while(p.x*p.x + p.y*p.y >= 1){
             Vec3.random(p)
         }
-        //p.y = p.y*(1+cosI)/2 + Math.sqrt(1-p.x*p.x)*(1-cosI)/2
         const h = Math.sqrt(1-p.x*p.x)
         const x = (1+dir_local.z)/2
-        //p.y = p.y*x + h*(1-x)
-        p.y = (p.y+h)*(h+h*dir_local.z)/(2*h)-(h*dir_local.z)
-
-        //p.y = 0
+        p.y = p.y*x + h*(1-x)
 
         const T1 = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Z), dir_local))
-        const T2 = Vec3.normalize(Vec3.cross(Vec3.clone(T1), dir_local))
+        const T2 = Vec3.normalize(Vec3.cross(Vec3.clone(dir_local), T1))
 
         let normalLocal = Vec3.add(
-            Vec3.add(Vec3.mulScalar(T1, p.x), Vec3.mulScalar(T2, p.y)),
+            Vec3.add(Vec3.mulScalar(Vec3.clone(T1), p.x), Vec3.mulScalar(Vec3.clone(T2), p.y)),
             Vec3.mulScalar(Vec3.clone(dir_local), Math.sqrt(1-(p.x*p.x+p.y*p.y)) )
         )
 
         Vec3.mul(normalLocal, Vec3.new(this.roughnessX , this.roughnessY, 1))
 
-        //console.log(Vec3.dot(Vec3.Z, normalLocal))
-
         return Vec3.normalize(this.toGlobal(normalLocal, normal))
     } 
 
+    TrowbridgeReitz(cosI, cosPhi){
+        const tanISqr = 1/(cosI*cosI) - 1
+        const cosPhiSqr = cosPhi*cosPhi
+        const sinPhiSqr =  1 - cosPhiSqr
+
+        const cosI4 = Math.pow(cosI, 4)
+        const parenthesis = 1+tanISqr*(cosPhiSqr/(this.roughnessX*this.roughnessX) + sinPhiSqr/(this.roughnessY*this.roughnessY))
+        return 1/(Math.PI*this.roughnessX*this.roughnessY*cosI4*parenthesis*parenthesis)
+    }
+
+    MaskingLambda(cosI, cosPhi){
+        const tanISqr = 1/(cosI*cosI) - 1
+        const cosPhiSqr = cosPhi*cosPhi
+        const sinPhiSqr =  1 - cosPhiSqr
+        const alpha = Math.sqrt(this.roughnessX*this.roughnessX*cosPhiSqr + this.roughnessY*this.roughnessY*sinPhiSqr)
+        return (Math.sqrt(1+alpha*alpha*tanISqr)-1)/2
+    }
+
+    MaskingShadowing(cosI_in, cosPhi_in, cosI_out, cosPhi_out){
+        return 1/(1+this.MaskingLambda(cosI_in, cosPhi_in)+this.MaskingLambda(cosI_out, cosPhi_out))
+    }
 }
 
 // Uses the Torrance-Sparrow BSDF based on the Trowbridge-Reitz microfacet model

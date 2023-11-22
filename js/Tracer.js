@@ -71,7 +71,7 @@ export class PathTracer extends Tracer{
                     const {ray:lightRay, t:lightT} = light.getRay(ray.origin)
                     if(!this.objStructure.isOccluded(lightRay, lightT)){
                         const light_color = light.getRadiance(ray)
-                        const hit_cos_angle = Math.abs(Vec3.dot(lightRay.getDirection(), normal))
+                        const hit_cos_angle = Math.abs(Vec3.dot(lightRay.getDirection(), matSample.normal))
                         const hit_color = Color.mulScalar(Color.mul(Color.clone(matSample.throughput), light_color), hit_cos_angle)
                         ray.addToThroughput(hit_color)
                     }else{
@@ -79,6 +79,8 @@ export class PathTracer extends Tracer{
                     }
                 }
             }
+
+            //const weightFactor = Color.mulScalar(Color.clone(matSample.weight), Vec3.dot(matSample.direction, matSample.normal))
             ray.updatePathWeight(matSample.weight)
         }else{
             // TODO
