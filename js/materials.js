@@ -30,7 +30,7 @@ export function deserialize(mat){
 
 class Utils{
     static reflect(direction, normal){
-        return Vec3.sub(Vec3.clone(direction), Vec3.mulScalar(normal, 2*Vec3.dot(direction, normal)))
+        return Vec3.sub(Vec3.clone(direction), Vec3.mulScalar(Vec3.clone(normal), 2*Vec3.dot(direction, normal)))
     }
 
     static cosTransmittedFromSnellLaw(etaRatio, cosIncident){
@@ -203,52 +203,56 @@ export class Conductor{
             cosI *= -1
         }
 
+        let weight       = Color.clone(this.color)
+        let throughput   = Color.clone(this.color)
+        let directionOut = Utils.reflect(ray.getDirection(), normal)
 
-            this.roughnessX = 1
-            this.roughnessY = 1
-            const normal_m = this.microfacetNormal(ray.direction, normal)
-            const direction_out_m = Utils.reflect(ray.getDirection(), Vec3.clone(normal_m))
-            const cosI_out_m = Vec3.dot(direction_out_m, normal_m)  
-            let cosI_in_m = Vec3.dot(ray.direction, normal_m)
-            if(cosI_in_m < 0){
-                cosI_in_m *= -1
+        this.roughnessX = 1
+        this.roughnessY = 1
+        if(this.roughnessX != 0 || this.roughnessY != 0){
+            const inverseDir = Vec3.mulScalar(Vec3.clone(ray.direction), -1)
+            const normalMicro  = this.microfacetNormal(inverseDir, normal)
+
+            // Note : This value can be on the opposite hemisphere as the macroface normal
+            directionOut = Utils.reflect(ray.direction, normalMicro)
+            if(Vec3.dot(directionOut, inverseDir) < 0){
+                console.error("Directions not on the same hemisphere")
+            }
+            if(Vec3.dot(directionOut, normal) < 0){
+                return false
             }
 
-            let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
-            if(normal.x == 0 && normal.y == 0){
-                xAxis = Vec3.X
-            }
-            const reverseDir = Vec3.mulScalar(Vec3.clone(ray.direction), -1)
-            const dir_local = this.toLocal(reverseDir, normal)
-            const dir_local_plane = Vec3.normalize(Vec3.new(dir_local.x, dir_local.y, 0))
-            const cosPhi_in = Vec3.dot(xAxis, dir_local_plane)
 
+            const cosI_m = Vec3.dot(inverseDir, normalMicro)
 
-            const dir_local_out = this.toLocal(direction_out_m, normal)
-            const dir_local_out_plane = Vec3.normalize(Vec3.new(dir_local_out.x, dir_local_out.y, 0))
-            const cosPhi_out = Vec3.dot(xAxis, dir_local_out_plane)
+            const cosIOut = Vec3.normalize(this.toLocal(directionOut, normal)).z
 
+            const G = this.MaskingShadowing(inverseDir, directionOut, normal)
+            const D = this.TrowbridgeReitz(normalMicro, normal)
+            const f = D*G/(4*cosI*cosIOut)
+            const PDF = (this.Masking(inverseDir, normal)/cosI *D*Vec3.dot(inverseDir, normalMicro)) / (4*Vec3.dot(inverseDir, normalMicro))
 
-            const G = this.MaskingShadowing(cosI, cosPhi_in, cosI_out_m, cosPhi_out)
-            const cosPhi_in_m = cosPhi_in // TODO correct that
-            const D = this.TrowbridgeReitz(cosI_in_m, cosPhi_in_m)
-            const factor = D*G/(4*cosI*cosI_out_m)
+            const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI_m)
+            const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI_m), cosT)
 
-
-            const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI)
-            const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI), cosT)
-
-
-            const weight = Color.mulScalar( Color.clone(this.color), reflectance*G) // TODO Wrong
-            const throughput = Color.mulScalar( Color.clone(this.color), reflectance*factor)
-
+            Color.mulScalar(weight, reflectance*(f/ PDF )) // factor too small
+            Color.mulScalar(throughput, reflectance*f)
+        }
 
         return {
             weight     : weight, //this.color,
             throughput : throughput, //Color.ZERO,
-            direction  : direction_out_m,
+            direction  : directionOut,
             normal     : Vec3.clone(normal)
         }
+    }
+
+
+    cosPhi(direction, normal){
+        const xAxis = this.xAxis(normal)
+        const dirLocal = this.toLocal(direction, normal)
+        const dirLocalFlat = Vec3.normalize(Vec3.new(dirLocal.x, dirLocal.y, 0))
+        return Vec3.dot(xAxis, dirLocalFlat)
     }
 
     cosThetaSnellLawComplex(etaRatio, cosI){
@@ -278,26 +282,19 @@ export class Conductor{
     }
 
     toLocal(v, normal){
-        let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
-        if(normal.x == 0 && normal.y == 0){
-            xAxis = Vec3.X
-        }
+        const xAxis = this.xAxis(normal)
         const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(xAxis), normal))
         return Vec3.normalize(Vec3.new(Vec3.dot(v, xAxis), Vec3.dot(v, yAxis), Vec3.dot(v, normal))) 
     }
 
     toGlobal(v, normal){
-        let xAxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
-        if(normal.x == 0 && normal.y == 0){
-            xAxis = Vec3.X
-        }
+        const xAxis = this.xAxis(normal)
         const yAxis = Vec3.normalize(Vec3.cross(Vec3.clone(xAxis), normal))
         return Vec3.add( Vec3.add(Vec3.mulScalar(xAxis, v.x), Vec3.mulScalar(yAxis, v.y)), Vec3.mulScalar(Vec3.clone(normal), v.z) )
     }
 
     microfacetNormal(baseDirection, normal){
-        const reverseDir = Vec3.mulScalar(Vec3.clone(baseDirection), -1)
-        const dir_local = this.toLocal(reverseDir, normal)
+        const dir_local = this.toLocal(baseDirection, normal)
 
         Vec3.mul(dir_local, Vec3.new(this.roughnessX , this.roughnessY, 1))
         Vec3.normalize(dir_local)
@@ -320,11 +317,13 @@ export class Conductor{
         )
 
         Vec3.mul(normalLocal, Vec3.new(this.roughnessX , this.roughnessY, 1))
-
+        Vec3.normalize(normalLocal)
         return Vec3.normalize(this.toGlobal(normalLocal, normal))
     } 
 
-    TrowbridgeReitz(cosI, cosPhi){
+    TrowbridgeReitz(dir, normal){
+        const cosI   = Vec3.normalize(this.toLocal(dir, normal)).z
+        const cosPhi = this.cosPhi(dir, normal)
         const tanISqr = 1/(cosI*cosI) - 1
         const cosPhiSqr = cosPhi*cosPhi
         const sinPhiSqr =  1 - cosPhiSqr
@@ -334,16 +333,30 @@ export class Conductor{
         return 1/(Math.PI*this.roughnessX*this.roughnessY*cosI4*parenthesis*parenthesis)
     }
 
-    MaskingLambda(cosI, cosPhi){
+    MaskingLambda(dir, normal){
+        const cosI   = Vec3.normalize(this.toLocal(dir, normal)).z
+        const cosPhi = this.cosPhi(dir, normal)
         const tanISqr = 1/(cosI*cosI) - 1
         const cosPhiSqr = cosPhi*cosPhi
         const sinPhiSqr =  1 - cosPhiSqr
-        const alpha = Math.sqrt(this.roughnessX*this.roughnessX*cosPhiSqr + this.roughnessY*this.roughnessY*sinPhiSqr)
-        return (Math.sqrt(1+alpha*alpha*tanISqr)-1)/2
+        const alphaSqr = this.roughnessX*this.roughnessX*cosPhiSqr + this.roughnessY*this.roughnessY*sinPhiSqr
+        return (Math.sqrt(1+alphaSqr*tanISqr)-1)/2
     }
 
-    MaskingShadowing(cosI_in, cosPhi_in, cosI_out, cosPhi_out){
-        return 1/(1+this.MaskingLambda(cosI_in, cosPhi_in)+this.MaskingLambda(cosI_out, cosPhi_out))
+    Masking(dir, normal){
+        return 1/(1+this.MaskingLambda(dir, normal))
+    }
+
+    MaskingShadowing(dirIn, dirOut, normal){
+        return 1/(1+this.MaskingLambda(dirIn, normal)+this.MaskingLambda(dirOut, normal))
+    }
+
+    xAxis(normal){
+        if(normal.x == 0 && normal.y == 0){
+            return Vec3.clone(Vec3.X)
+        }else{
+            return Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
+        }
     }
 }
 
