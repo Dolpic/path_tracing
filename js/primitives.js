@@ -21,13 +21,13 @@ export class Ray {
     }
 
     setDirection(direction){
-        Vec3.equal(this.direction, Vec3.normalize(direction))
+        Vec3.equal(this.direction, Vec3.normalize(Vec3.clone(direction)))
         this.DotDirection = Vec3.dot(this.direction, this.direction)
         return this
     }
 
     getDirection(){
-        return this.direction
+        return Vec3.clone(this.direction)
     }
 
     addToThroughput(color){
@@ -238,6 +238,29 @@ export class Vec3 {
 
     static randomOnUnitSphere(self){
         Vec3.normalize(Vec3.randomSpheric(self))
+        return self
+    }
+
+    static randomOnHemisphere(self){
+        const res = Vec3.randomOnUnitSphere(self)
+        res.z = Math.abs(res.z)
+        return res
+    }
+
+    static randomOnHemisphereCosWeighted(self){
+        let x = Math.random()*2-1
+        let y = Math.random()*2-1
+        let r, theta
+        if(Math.abs(x) > Math.abs(y)){
+            r = x
+            theta = Math.PI/4 * (y/x)
+        }else{
+            r = y
+            theta = Math.PI/2 - Math.PI/4 * (x/y)
+        }
+        self.x = r * Math.cos(theta)
+        self.y = r * Math.sin(theta)
+        self.z = Math.sqrt(1-self.x*self.x-self.y*self.y)
         return self
     }
 

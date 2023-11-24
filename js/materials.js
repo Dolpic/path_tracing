@@ -52,22 +52,85 @@ class Utils{
             }
         }
     }
+
+    static toLocal(v, normal){
+        const {x:xAxis, y:yAxis} = this.getGlobalXYAxis(normal)
+        const x = Vec3.dot(v, xAxis)
+        const y = Vec3.dot(v, yAxis)
+        const z = Vec3.dot(v, normal)
+        return Vec3.normalize(Vec3.set(v, x,y,z))
+    }
+
+    static toGlobal(v, normal){
+        const {x:xAxis, y:yAxis} = this.getGlobalXYAxis(normal)
+        const x = Vec3.mulScalar(xAxis, v.x)
+        const y = Vec3.mulScalar(yAxis, v.y)
+        const z = Vec3.mulScalar(Vec3.clone(normal), v.z)
+        return Vec3.equal(v, Vec3.add(Vec3.add(x,y), z))
+    }
+
+    static getGlobalXYAxis(normal){
+        if(normal.x == 0 && normal.y == 0){
+            return {x:Vec3.clone(Vec3.X), y:Vec3.clone(Vec3.Y)}
+        }else{
+            const xaxis = Vec3.normalize(Vec3.new(-normal.y, normal.x, 0))
+            return {
+                x: xaxis,
+                y: Vec3.normalize(Vec3.cross(Vec3.clone(xaxis), normal))
+            }
+        }
+    }
+
+    /* Assumes local coordinates */
+    static sameHemisphere(vec1, vec2){
+        return vec1.z * vec2.z > 0
+    }
 }
 
-export class Diffuse{
+export class Material{
+    constructor(){}
+    hit(dirIn, normal){
+        const result = this.hitLocal(Utils.toLocal(dirIn, normal))
+        return {
+            color: result.color,
+            direction: Utils.toGlobal(result.direction, normal)
+        }
+    }
+    sample(dirIn, dirOut, normal){
+        Utils.toLocal(dirIn, normal)
+        Utils.toLocal(dirOut, normal)
+        return this.sampleLocal(dirIn, dirOut)
+    }
+}
+
+export class Diffuse extends Material{
     constructor(color){
+        super()
         this.type  = BxDF.Diffuse
         this.color = color
     }
 
-    sample(ray, normal){
+    hitLocal(dirIn){
+        //const dirOut = Vec3.randomOnHemisphere(Vec3.new())
+        const dirOut = Vec3.randomOnHemisphereCosWeighted(Vec3.new())
+        if(Utils.sameHemisphere(dirOut, dirIn)){
+            dirOut.z *= -1
+        }
+
+        const PDF = Math.abs(dirOut.z) * (1/Math.PI)
         return {
-            weight     : this.color,
-            throughput : Color.mulScalar(Color.clone(this.color), 1/Math.PI),
-            direction  : Vec3.add(Vec3.clone(normal), Vec3.randomOnUnitSphere(ray.getDirection())),
-            normal     : Vec3.clone(normal)
+            color    : Color.mulScalar(this.sampleLocal(dirIn, dirOut), 1/PDF),
+            direction: dirOut
         }
     }
+
+    sampleLocal(dirIn, dirOut){
+        if(Utils.sameHemisphere(dirIn, dirOut)){
+            return Color.ZERO
+        }
+        return Color.mulScalar(Color.clone(this.color), 1/Math.PI)
+    }
+
 }
 
 export class Reflect{
@@ -87,8 +150,7 @@ export class Reflect{
         return {
             weight     : this.color,
             throughput : Color.ZERO,
-            direction  : Vec3.sub(ray.getDirection(), reflectDir),
-            normal     : Vec3.clone(normal)
+            direction  : Vec3.sub(ray.getDirection(), reflectDir)
         }
     }
 }
@@ -123,8 +185,7 @@ export class Transmit{
         return {
             weight     : this.color,
             throughput : Color.ZERO,
-            direction  : resultDir,
-            normal     : Vec3.clone(normal)
+            direction  : resultDir
         }
     }
 
@@ -169,8 +230,7 @@ export class Dielectric{
         return {
             weight     : this.color,
             throughput : Color.ZERO,
-            direction  : resultDir,
-            normal     : Vec3.clone(normal)
+            direction  : resultDir
         }
     }
 
@@ -215,36 +275,42 @@ export class Conductor{
 
             // Note : This value can be on the opposite hemisphere as the macroface normal
             directionOut = Utils.reflect(ray.direction, normalMicro)
-            if(Vec3.dot(directionOut, inverseDir) < 0){
-                console.error("Directions not on the same hemisphere")
-            }
-            if(Vec3.dot(directionOut, normal) < 0){
+            if(Vec3.dot(inverseDir, normal) * Vec3.dot(directionOut, normal) < 0){
                 return false
             }
 
+            if(Vec3.dot(normalMicro, normal) < 0){
+                console.error("Normals not on the same hemisphere")
+            }
 
-            const cosI_m = Vec3.dot(inverseDir, normalMicro)
-
+            const cosI_m = this.absDot(inverseDir, normalMicro)
             const cosIOut = Vec3.normalize(this.toLocal(directionOut, normal)).z
 
             const G = this.MaskingShadowing(inverseDir, directionOut, normal)
             const D = this.TrowbridgeReitz(normalMicro, normal)
             const f = D*G/(4*cosI*cosIOut)
-            const PDF = (this.Masking(inverseDir, normal)/cosI *D*Vec3.dot(inverseDir, normalMicro)) / (4*Vec3.dot(inverseDir, normalMicro))
+            const PDF = (this.Masking(inverseDir, normal)/cosI *D*this.absDot(inverseDir, normalMicro)) / (4*this.absDot(inverseDir, normalMicro))
 
             const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI_m)
             const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI_m), cosT)
 
-            Color.mulScalar(weight, reflectance*(f/ PDF )) // factor too small
-            Color.mulScalar(throughput, reflectance*f)
+            Color.mulScalar(weight, (f/PDF)*this.absDot(directionOut, normal)) // PDF too small
+            Color.mulScalar(throughput, f)
         }
 
         return {
             weight     : weight, //this.color,
             throughput : throughput, //Color.ZERO,
-            direction  : directionOut,
-            normal     : Vec3.clone(normal)
+            direction  : directionOut
         }
+    }
+
+    absDot(v1, v2){
+        const res = Vec3.dot(v1,v2)
+        if(res < 0){
+            console.error("absDot error")
+        }
+        return res
     }
 
 
@@ -359,6 +425,8 @@ export class Conductor{
         }
     }
 }
+
+
 
 // Uses the Torrance-Sparrow BSDF based on the Trowbridge-Reitz microfacet model
 export class RoughConductor{

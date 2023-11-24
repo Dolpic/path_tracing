@@ -62,29 +62,30 @@ export class PathTracer extends Tracer{
 
     interaction(ray, objHit){
         if(this.lightSampling){
+
             const normal = objHit.normalAt(ray.origin)
-            const matSample = objHit.material.sample(ray, Vec3.clone(normal))
+            const hitResult = objHit.material.hit(ray.getDirection(), normal)
 
-            if(matSample){
-                Vec3.equal(ray.getDirection(), Vec3.normalize(matSample.direction))
+            if(hitResult){
+                const light = sampleLight(this.lights)
+                if(light != undefined){
 
-                if(matSample.throughput !== Color.ZERO){
-                    const light = sampleLight(this.lights)
-                    if(light != undefined){
-                        const {ray:lightRay, t:lightT} = light.getRay(ray.origin)
+                    const {ray:lightRay, t:lightT} = light.getRay(ray.origin)
+                    const sampleColor = objHit.material.sample(ray.getDirection(), lightRay.getDirection(), normal)
+
+                    if(sampleColor != Color.ZERO){
                         if(!this.objStructure.isOccluded(lightRay, lightT)){
-                            const light_color = light.getRadiance(ray)
-                            const hit_cos_angle = Math.abs(Vec3.dot(lightRay.getDirection(), matSample.normal))
-                            const hit_color = Color.mulScalar(Color.mul(Color.clone(matSample.throughput), light_color), hit_cos_angle)
-                            ray.addToThroughput(hit_color)
-                        }else{
-                           // ray.addToThroughput(Color.new(1,0,0))
+                            const lightColor = light.getRadiance(ray)
+                            const lightCosAngle = Math.abs(Vec3.dot(lightRay.getDirection(), normal))
+                            const throughputColor = Color.mulScalar(Color.mul(Color.clone(sampleColor), lightColor), lightCosAngle)
+                            ray.addToThroughput(throughputColor)
                         }
                     }
                 }
     
-                //const weightFactor = Color.mulScalar(Color.clone(matSample.weight), Vec3.dot(matSample.direction, matSample.normal))
-                ray.updatePathWeight(matSample.weight)
+                ray.setDirection(hitResult.direction)
+                const weightFactor = Color.mulScalar(Color.clone(hitResult.color), Vec3.dot(hitResult.direction, normal))
+                ray.updatePathWeight(weightFactor)
                 return true
             }else{
                 return false
