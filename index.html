@@ -56,7 +56,9 @@
         import Tabs   from "./js/ui/tabs.js"
         import Scenes from "./js/scenes.js"
         import { Complex } from "./js/primitives.js"
-        import { Diffuse, Reflect, Transmit, Dielectric, Conductor, RoughConductor} from "./js/materials.js"
+        import Diffuse from "./js/materials/diffuse.js"
+        import Conductor from "./js/materials/conductor.js"
+        import {Reflect, Transmit, Dielectric} from "./js/materials.js"
 
         document.PARAMS = {
             samples_per_pixel: 5,
@@ -96,7 +98,6 @@
                             <option value="transmission">Dielectric - Transmission only</option>
                             <option value="dielectric">Dielectric</option>
                             <option value="conductor">Conductor (gold)</option>
-                            <option value="roughConductor">Rough Conductor</option>
                         </select>
                         <input type="color" id="materialColor" value="#ffffff"/>
                         <div id="sceneParams_materialTest_material_sliders"></div>
@@ -133,7 +134,7 @@
                 new Slider("cameraLens", "Field of view",  45, val=>document.PARAMS.camera.fieldOfView=val,            5, 170),
                 new Slider("cameraLens", "Lens radius",    0,  val=>document.PARAMS.camera.lens.radius=val,    0, 1),
                 new Slider("cameraLens", "Focal distance", 0,  val=>document.PARAMS.camera.lens.focalDistance=val, 0, 10),
-                new Slider("renderingParameters", "Samples per pixel", 25,  val=>document.PARAMS.samples_per_pixel=val, 5, 150, 1, 0),
+                new Slider("renderingParameters", "Samples per pixel", 25,  val=>document.PARAMS.samples_per_pixel=val, 2, 150, 1, 0),
                 new Slider("sceneParams_materialTest_material_sliders", "Refraction Index", 1.5, ()=>{}, 0.1, 5, 0.01)
             ]
 
@@ -177,8 +178,6 @@
                         case "conductor":
                             material = new Conductor(color, Complex.fromReal(1), Complex.new(0.2, 3))
                             break
-                        case "roughConductor":
-                            material = new RoughConductor(color, 1, IoR, 1)
                     }
                     return Scenes.MaterialTest(material, model)
             }

@@ -225,6 +225,7 @@ export class Vec3 {
         self.x = Math.random()*2-1
         self.y = Math.random()*2-1
         self.z = Math.random()*2-1
+        return self
     }
 
     // Can be improved but ok for now
@@ -237,8 +238,7 @@ export class Vec3 {
     }
 
     static randomOnUnitSphere(self){
-        Vec3.normalize(Vec3.randomSpheric(self))
-        return self
+        return Vec3.normalize(Vec3.randomSpheric(self))
     }
 
     static randomOnHemisphere(self){
