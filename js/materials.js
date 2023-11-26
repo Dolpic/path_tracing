@@ -2,13 +2,14 @@ import Diffuse from "./materials/diffuse.js"
 import Conductor from "./materials/conductor.js"
 import { Vec3, Color } from "./primitives.js"
 import { MaterialTypes } from "./materials/material.js"
+import Reflector from "./materials/reflector.js"
 
 export function deserialize(mat){
     switch(mat.type){
         case MaterialTypes.Diffuse:
             return Diffuse.deserialize(mat)
         case MaterialTypes.Reflect:
-            return new Reflect(mat.color, mat.granular_factor)
+            return Reflector.deserialize(mat)
         case MaterialTypes.Transmit:
             return new Transmit(mat.color, mat.etaFrom, mat.eta_To)
         case MaterialTypes.Dielectric:
@@ -17,28 +18,6 @@ export function deserialize(mat){
             return Conductor.deserialize(mat)
         default:
             console.error(`Unknown material type : ${mat.type}`)
-    }
-}
-
-export class Reflect{
-    constructor(color, granularity=0){
-        this.type        = MaterialTypes.Reflect
-        this.color       = color
-        this.granularity = granularity
-    }
-
-    sample(ray, normal){
-        let reflectDir = Vec3.mulScalar(normal, 2*Vec3.dot(ray.getDirection(), normal) )
-        if(this.granularity > 0){
-            let reflectJiggle = Vec3.mulScalar( Vec3.randomOnUnitSphere(Vec3.new()), this.granularity) 
-            Vec3.add(reflectDir, reflectJiggle )
-        }
-        
-        return {
-            weight     : this.color,
-            throughput : Color.ZERO,
-            direction  : Vec3.sub(ray.getDirection(), reflectDir)
-        }
     }
 }
 

@@ -8,8 +8,8 @@ export default class Conductor extends Material{
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
-        this.roughnessX = 1//roughnessX
-        this.roughnessY = 0.1//roughnessY
+        this.roughnessX = 0.1//roughnessX
+        this.roughnessY = 1//roughnessY
     }
 
     static deserialize(mat){
@@ -22,8 +22,6 @@ export default class Conductor extends Material{
             dirOut = Utils.reflect(Vec3.clone(dirIn))
         }else{
             dirOut = Utils.reflectWithNormal(dirIn, this.microfacetNormal(dirIn))
-
-            // If dirOut goes further into the material, we discard it
             if(Utils.areSameHemisphere(dirIn, dirOut)){
                 return false
             }
@@ -117,11 +115,9 @@ export default class Conductor extends Material{
 
     TrowbridgeReitz(dir){
         const cosThetaSqr = dir.z*dir.z
-        const cosPhi = dir.x / Math.sqrt(1-cosThetaSqr)
-        const tanISqr = 1/(cosThetaSqr) - 1
-        const cosPhiSqr = cosPhi*cosPhi
+        const tanISqr = 1/cosThetaSqr - 1
+        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr)
         const sinPhiSqr =  1 - cosPhiSqr
-
         const cosI4 = cosThetaSqr*cosThetaSqr
         const parenthesis = 1+tanISqr*(cosPhiSqr/(this.roughnessX*this.roughnessX) + sinPhiSqr/(this.roughnessY*this.roughnessY))
         return 1/(Math.PI*this.roughnessX*this.roughnessY*cosI4*parenthesis*parenthesis)
@@ -129,9 +125,8 @@ export default class Conductor extends Material{
 
     MaskingLambda(dir){
         const cosThetaSqr = dir.z*dir.z
-        const cosPhi = dir.x / Math.sqrt(1-cosThetaSqr)
         const tanISqr = 1/cosThetaSqr - 1
-        const cosPhiSqr = cosPhi*cosPhi
+        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr)
         const sinPhiSqr =  1 - cosPhiSqr
         const alphaSqr = this.roughnessX*this.roughnessX*cosPhiSqr + this.roughnessY*this.roughnessY*sinPhiSqr
         return (Math.sqrt(1+alphaSqr*tanISqr)-1)/2
