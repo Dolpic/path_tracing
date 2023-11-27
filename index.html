@@ -59,8 +59,8 @@
         import Diffuse from "./js/materials/diffuse.js"
         import Conductor from "./js/materials/conductor.js"
         import Reflector from "./js/materials/reflector.js"
-        import {Transmit, Dielectric} from "./js/materials.js"
-
+        import {Dielectric} from "./js/materials.js"
+        import Transmitter from "./js/materials/transmitter.js"
         document.PARAMS = {
             samples_per_pixel: 5,
             nb_workers:        10,
@@ -96,7 +96,7 @@
                         <select id="sceneParams_materialTest_material">
                             <option value="diffuse">Diffuse</option>
                             <option value="reflection">Perfect reflector</option>
-                            <option value="transmission">Dielectric - Transmission only</option>
+                            <option value="transmission">Perfect Transmitter</option>
                             <option value="dielectric">Dielectric</option>
                             <option value="conductor">Conductor (gold)</option>
                         </select>
@@ -171,7 +171,7 @@
                             material = new Reflector(color)
                             break
                         case "transmission":
-                            material = new Transmit(color, 1, IoR)
+                            material = new Transmitter(color, 1, IoR)
                             break
                         case "dielectric":
                             material = new Dielectric(color, 1, IoR)

@@ -4,9 +4,9 @@ import { Vec3, Color } from "../primitives.js"
 export default class Reflector extends Material{
     constructor(color, granularity=0){
         super()
-        this.type        = MaterialTypes.Reflect
+        this.type        = MaterialTypes.Reflector
         this.color       = color
-        this.granularity = 0.5 // granularity
+        this.granularity = granularity
     }
 
     static deserialize(mat){

@@ -29,7 +29,7 @@ function init(id, scene){
     const objs      = scene.shapes.map(s=>deserialize(s, materials))
     const bvh = new ObjectsBVH(objs)
     bvh.compute()
-    self.tracer = new PathTracer(bvh, lights, 6, true, true)
+    self.tracer = new PathTracer(bvh, lights, 50, true, true)
 }
 
 function render(params){

@@ -31,6 +31,11 @@ class Tracer{
                 break
             }
             //if(this.timer) this.timer.step("Interaction")
+
+            if(i == this.maxDepth-1){
+
+                ray.addToThroughput({r:1,g:0,b:0})
+            }
         }
     }
 

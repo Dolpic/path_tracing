@@ -1,11 +1,11 @@
 import { Vec3 } from "../primitives.js"
 
 export const MaterialTypes = {
-    Diffuse:    0,
-    Reflect:    1,
-    Transmit:   2,
-    Dielectric: 3,
-    Conductor:  4
+    Diffuse:     0,
+    Reflector:   1,
+    Transmitter: 2,
+    Dielectric:  3,
+    Conductor:   4
 }
 
 export class Material{
