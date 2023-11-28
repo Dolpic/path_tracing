@@ -31,11 +31,6 @@ class Tracer{
                 break
             }
             //if(this.timer) this.timer.step("Interaction")
-
-            if(i == this.maxDepth-1){
-
-                ray.addToThroughput({r:1,g:0,b:0})
-            }
         }
     }
 
@@ -89,7 +84,7 @@ export class PathTracer extends Tracer{
                 }
     
                 ray.setDirection(hitResult.direction)
-                const weightFactor = Color.mulScalar(Color.clone(hitResult.color), Vec3.dot(hitResult.direction, normal))
+                const weightFactor = Color.mulScalar(Color.clone(hitResult.color), Math.abs(Vec3.dot(hitResult.direction, normal)))
                 ray.updatePathWeight(weightFactor)
                 return true
             }else{
