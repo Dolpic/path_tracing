@@ -1,5 +1,6 @@
 import { Vec3, Complex, Color } from "../primitives.js"
-import { Material, MaterialTypes, Utils } from "./material.js"
+import { Material } from "./material.js"
+import { MaterialTypes, Utils } from "./utils.js"
 
 export default class Conductor extends Material{
     constructor(color, etaFrom, etaTo, roughnessX=0, roughnessY=0){

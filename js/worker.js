@@ -2,7 +2,7 @@ import { Color } from "./primitives.js";
 import { deserialize } from "./objects/Shape.js";
 import { ObjectsBVH} from "./objects/structures/ObjectsBVH.js";
 import Camera from "./Camera.js"
-import { deserialize as deserializeMaterial } from "./materials.js"; // TODO do the same as for deserialize in camera
+import { deserialize as deserializeMaterial } from "./materials/utils.js";
 import Light from "./Lights.js";
 import { PathTracer } from "./Tracer.js";
 import Timer from "./Timer.js";

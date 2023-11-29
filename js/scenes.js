@@ -2,7 +2,7 @@ import { Sphere } from "./objects/Shape.js"
 import Objects from "./objects/Object.js"
 import Diffuse from "./materials/diffuse.js"
 import Conductor from "./materials/conductor.js"
-import { Dielectric} from "./materials.js"
+import Dielectric from "./materials/dielectric.js"
 import { Vec3, Color, Complex } from "./primitives.js"
 import Matrix from "./primitives/Matrix.js"
 import {PointLight, EnvironmentalLight} from "./Lights.js"
@@ -115,7 +115,7 @@ export default class Scenes{
         return {
             materials:[
                 new Diffuse(Color.new(0.8, 0.4, 0.3)),
-                new Dielectric(Color.new(0.85, 0.85, 0.85), 1, 1.4),
+                new Dielectric(Color.new(0.9, 0.9, 0.9), 1, 1.4),
                 new Conductor(Color.new(0.9, 0.6, 0.1), Complex.fromReal(1), Complex.new(0.2, 3))
             ],
             objects:[
@@ -139,7 +139,7 @@ export default class Scenes{
                 new Sphere( Vec3.new(0, -80.98, -4), 80, 0),
             ],
             lights:[
-                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.1),
+                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.2),
                 new PointLight(Vec3.new(2, 5, -5), Color.new(1,1,1), 400)
             ],
             camera: {

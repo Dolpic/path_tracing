@@ -1,12 +1,5 @@
 import { Vec3 } from "../primitives.js"
 
-export const MaterialTypes = {
-    Diffuse:     0,
-    Reflector:   1,
-    Transmitter: 2,
-    Dielectric:  3,
-    Conductor:   4
-}
 
 export class Material{
     constructor(){}
@@ -46,52 +39,16 @@ export class Material{
         return Vec3.equal(v, Vec3.add(Vec3.add(x,y), z))
     }
 
+    // TODO The fact that axis Y and Z are swapped is counterintuitive...
     static getGlobalXYAxis(normal){
-        if(normal.x == 0 && normal.y == 0){
-            return {x:Vec3.clone(Vec3.X), y:Vec3.clone(Vec3.Y)}
+        if(normal.x == 0 && normal.z == 0){
+            return {x:Vec3.clone(Vec3.X), y:Vec3.clone(Vec3.Z)}
         }else{
-            const xaxis = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Y),normal))
+            const xaxis = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Z),normal))
             return {
                 x: xaxis,
                 y: Vec3.normalize(Vec3.cross(Vec3.clone(xaxis), normal))
             }
         }
-    }
-}
-
-export class Utils{
-
-    static cosTransmittedFromSnellLaw(etaRatio, cosIncident){
-        const squared = 1 - etaRatio*etaRatio*(1-cosIncident*cosIncident)
-        return squared < 0 ? false : Math.sqrt(squared)
-    }
-
-    static adjustIfExitingRay(cosI, etaFrom, etaTo, normal){
-        if(cosI > 0){
-            Vec3.mulScalar(normal, -1)
-            return {
-                etaRatio: etaTo/etaFrom,
-                cosI:     cosI
-            }
-        }else{
-            return {
-                etaRatio: etaFrom/etaTo,
-                cosI:     -cosI
-            }
-        }
-    }
-
-    /* Assumes local coordinates */
-    static areSameHemisphere(vec1, vec2){
-        return vec1.z * vec2.z > 0
-    }
-
-    static reflect(dir){
-        dir.z *= -1
-        return dir
-    }
-
-    static reflectWithNormal(dir, normal){
-        return Vec3.sub(Vec3.clone(dir), Vec3.mulScalar(Vec3.clone(normal), 2*Vec3.dot(dir, normal)))
     }
 }

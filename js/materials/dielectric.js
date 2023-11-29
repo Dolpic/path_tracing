@@ -1,18 +1,18 @@
+import { Vec3, Color } from "../primitives.js"
 import { Material } from "./material.js"
 import { MaterialTypes, Utils } from "./utils.js"
-import { Vec3, Color } from "../primitives.js"
 
-export default class Transmitter extends Material{
+export default class Dielectric extends Material{
     constructor(color, etaFrom=1, etaTo=1){
         super()
-        this.type    = MaterialTypes.Transmitter
+        this.type    = MaterialTypes.Dielectric
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
     }
 
     static deserialize(mat){
-        return new Transmitter(mat.color, mat.etaFrom, mat.etaTo)
+        return new Dielectric(mat.color, mat.etaFrom, mat.etaTo)
     }
 
     hitLocal(dirIn){
@@ -22,14 +22,19 @@ export default class Transmitter extends Material{
         const etaRatio = etaFrom/etaTo
 
         const cosT = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI)
-
+        
         let dirOut
-        // If total internal refraction OR reflection due to Schlick approximation
-        if(cosT == false || this.schlickApproximation(cosI, etaFrom, etaTo) > Math.random()){ 
+        if(cosT === false){ // Total internal reflection
             dirOut = Utils.reflect(dirIn)
         }else{
-            dirOut = Vec3.set(dirIn, dirIn.x*etaRatio, dirIn.y*etaRatio, cosT*Math.sign(dirIn.z))
+            const reflectance = this.fresnelReflectance(etaRatio, cosI, cosT)
+            if(reflectance > Math.random()){
+                dirOut = Utils.reflect(dirIn)
+            }else{ // Transmit
+                dirOut = Vec3.set(dirIn, dirIn.x*etaRatio, dirIn.y*etaRatio, cosT*Math.sign(dirIn.z))
+            }
         }
+
         return {
             color: Color.mulScalar(Color.clone(this.color), 1/Math.abs(dirOut.z)),
             direction: dirOut
@@ -43,9 +48,9 @@ export default class Transmitter extends Material{
         return Color.ZERO
     }
 
-    schlickApproximation(cos, etaFrom, etaTo) {
-        const r = (etaFrom-etaTo)/(etaFrom+etaTo)
-        const rSqr = r*r
-        return rSqr + (1-rSqr)*Math.pow(1-cos, 5)
+    fresnelReflectance(eta, cosI, cosT){
+        const rParallel      = (cosI-eta*cosT) / (cosI+eta*cosT)
+        const rPerpendicular = (cosT-eta*cosI) / (cosT+eta*cosI)
+        return (rParallel*rParallel + rPerpendicular*rPerpendicular)/2
     }
 }

@@ -1,4 +1,5 @@
-import { Material, MaterialTypes, Utils } from "./material.js"
+import { Material } from "./material.js"
+import { MaterialTypes, Utils } from "./utils.js"
 import { Vec3, Color } from "../primitives.js"
 
 export default class Reflector extends Material{

@@ -1,5 +1,6 @@
 import { Vec3, Color } from "../primitives.js"
-import { Material, MaterialTypes, Utils } from "./material.js"
+import { Material } from "./material.js"
+import { MaterialTypes, Utils } from "./utils.js"
 
 export default class Diffuse extends Material{
     constructor(color, cosWeightedSampling=true){
