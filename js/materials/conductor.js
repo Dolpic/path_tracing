@@ -9,7 +9,7 @@ export default class Conductor extends Material{
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
-        this.roughnessX = 0.1//roughnessX
+        this.roughnessX = 0.3//roughnessX
         this.roughnessY = 1//roughnessY
     }
 
@@ -34,7 +34,10 @@ export default class Conductor extends Material{
     }
 
     sampleLocal(dirIn, dirOut, sampleFromHit=false){
-        const cosI = Math.abs(dirIn.z)
+        if(Utils.areSameHemisphere(dirIn, dirOut)){
+            return Color.clone(Color.ZERO)
+        }
+
         let etaRatio
         if(dirIn.z > 0){
             etaRatio = Complex.div(Complex.clone(this.etaTo), this.etaFrom)
@@ -44,20 +47,23 @@ export default class Conductor extends Material{
 
         if(this.roughnessX == 0 && this.roughnessY == 0){
             if(!sampleFromHit) return Color.clone(Color.ZERO)
+            const cosI = Math.abs(dirIn.z)
             const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI)
             const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI), cosT)
             return Color.mulScalar(Color.clone(this.color), reflectance/Math.abs(dirOut.z))
         }else{
+            const cosI = Math.abs(dirIn.z)
             const reversedIn = Vec3.mulScalar(Vec3.clone(dirIn), -1)
             const microNormal = Vec3.normalize(Vec3.add(dirIn, dirOut))
             const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
+
             const D = this.TrowbridgeReitz(microNormal)
             const f = D*this.MaskingShadowing(reversedIn, dirOut)/(4*cosI*Math.abs(dirOut.z))
             const PDF = (D*(this.Masking(reversedIn)/cosI)*cosI_m) / (4*cosI_m)
+
             const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI_m)
             const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI_m), cosT)
-            const finalFactor = sampleFromHit ? reflectance*f/PDF : reflectance*f
-            return Color.mulScalar(Color.clone(this.color), finalFactor)
+            return Color.mulScalar(Color.clone(this.color), sampleFromHit?reflectance*f/PDF:reflectance*f)
         }
     }
 
@@ -111,6 +117,7 @@ export default class Conductor extends Material{
             Vec3.mulScalar(dirReversed, pz)
         )
 
+        // Multiplication to keep the normals perpendicular to the surface
         return Vec3.normalize(Vec3.mul(normal, roughness))
     } 
 

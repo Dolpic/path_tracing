@@ -1,6 +1,5 @@
 import { Vec3 } from "../primitives.js"
 
-
 export class Material{
     constructor(){}
 
@@ -44,7 +43,7 @@ export class Material{
         if(normal.x == 0 && normal.z == 0){
             return {x:Vec3.clone(Vec3.X), y:Vec3.clone(Vec3.Z)}
         }else{
-            const xaxis = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Z),normal))
+            const xaxis = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Y),normal))
             return {
                 x: xaxis,
                 y: Vec3.normalize(Vec3.cross(Vec3.clone(xaxis), normal))
