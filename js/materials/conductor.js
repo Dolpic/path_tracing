@@ -9,8 +9,8 @@ export default class Conductor extends Material{
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
-        this.roughnessX = 0.3//roughnessX
-        this.roughnessY = 1//roughnessY
+        this.roughnessX = roughnessX
+        this.roughnessY = roughnessY
     }
 
     static deserialize(mat){
@@ -22,7 +22,8 @@ export default class Conductor extends Material{
         if(this.roughnessX == 0 && this.roughnessY == 0){
             dirOut = Utils.reflect(Vec3.clone(dirIn))
         }else{
-            dirOut = Utils.reflectWithNormal(dirIn, this.microfacetNormal(dirIn))
+            const microNormal = Utils.TrowbridgeReitzMicrofacet(dirIn, this.roughnessX, this.roughnessY)
+            dirOut = Utils.reflectWithNormal(dirIn, microNormal)
             if(Utils.areSameHemisphere(dirIn, dirOut)){
                 return false
             }
@@ -54,13 +55,11 @@ export default class Conductor extends Material{
         }else{
             const cosI = Math.abs(dirIn.z)
             const reversedIn = Vec3.mulScalar(Vec3.clone(dirIn), -1)
-            const microNormal = Vec3.normalize(Vec3.add(dirIn, dirOut))
+            const microNormal = Vec3.normalize(Vec3.add(Vec3.clone(reversedIn), dirOut))
             const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
-
             const D = this.TrowbridgeReitz(microNormal)
             const f = D*this.MaskingShadowing(reversedIn, dirOut)/(4*cosI*Math.abs(dirOut.z))
             const PDF = (D*(this.Masking(reversedIn)/cosI)*cosI_m) / (4*cosI_m)
-
             const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI_m)
             const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI_m), cosT)
             return Color.mulScalar(Color.clone(this.color), sampleFromHit?reflectance*f/PDF:reflectance*f)
@@ -94,37 +93,11 @@ export default class Conductor extends Material{
         
         return (Complex.modulusSquared(r_parallel) + Complex.modulusSquared(r_perpendicular))/2
     }
-
-    microfacetNormal(dir){
-        const roughness = Vec3.new(this.roughnessX , this.roughnessY, 1)
-        const dirReversed = Vec3.mulScalar(Vec3.clone(dir), -1)
-
-        Vec3.normalize(Vec3.mul(dirReversed, roughness))
-        const axisX = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Z), dirReversed))
-        const axisY = Vec3.normalize(Vec3.cross(Vec3.clone(dirReversed), axisX))
-
-        let p = Vec3.random(Vec3.new())
-        while(p.x*p.x + p.y*p.y >= 1){
-            Vec3.random(p)
-        }
-        const h = Math.sqrt(1-p.x*p.x)
-        const x = (1+dirReversed.z)/2
-        p.y = p.y*x + h*(1-x)
-
-        const pz = Math.sqrt(1-p.x*p.x-p.y*p.y)
-        const normal = Vec3.add(
-            Vec3.add(Vec3.mulScalar(axisX, p.x), Vec3.mulScalar(axisY, p.y)),
-            Vec3.mulScalar(dirReversed, pz)
-        )
-
-        // Multiplication to keep the normals perpendicular to the surface
-        return Vec3.normalize(Vec3.mul(normal, roughness))
-    } 
-
+    
     TrowbridgeReitz(dir){
         const cosThetaSqr = dir.z*dir.z
         const tanISqr = 1/cosThetaSqr - 1
-        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr)
+        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr) 
         const sinPhiSqr =  1 - cosPhiSqr
         const cosI4 = cosThetaSqr*cosThetaSqr
         const parenthesis = 1+tanISqr*(cosPhiSqr/(this.roughnessX*this.roughnessX) + sinPhiSqr/(this.roughnessY*this.roughnessY))
@@ -134,7 +107,7 @@ export default class Conductor extends Material{
     MaskingLambda(dir){
         const cosThetaSqr = dir.z*dir.z
         const tanISqr = 1/cosThetaSqr - 1
-        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr)
+        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr) 
         const sinPhiSqr =  1 - cosPhiSqr
         const alphaSqr = this.roughnessX*this.roughnessX*cosPhiSqr + this.roughnessY*this.roughnessY*sinPhiSqr
         return (Math.sqrt(1+alphaSqr*tanISqr)-1)/2

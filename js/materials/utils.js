@@ -49,4 +49,31 @@ export class Utils{
     static reflectWithNormal(dir, normal){
         return Vec3.sub(Vec3.clone(dir), Vec3.mulScalar(Vec3.clone(normal), 2*Vec3.dot(dir, normal)))
     }
+
+    static TrowbridgeReitzMicrofacet(dirIn, roughnessX, roughnessY){
+        const roughness = Vec3.new(roughnessX, roughnessY, 1)
+        const dirReversed = Vec3.mulScalar(Vec3.clone(dirIn), -1)
+
+        Vec3.normalize(Vec3.mul(dirReversed, roughness))
+
+        const axisX = Vec3.normalize(Vec3.cross(Vec3.clone(Vec3.Z), dirReversed))
+        const axisY = Vec3.normalize(Vec3.cross(Vec3.clone(dirReversed), axisX))
+
+        let p = Vec3.random(Vec3.new())
+        while(p.x*p.x + p.y*p.y >= 1){
+            Vec3.random(p)
+        }
+        const h = Math.sqrt(1-p.x*p.x)
+        const x = (1+dirReversed.z)/2
+        p.y = p.y*x + h*(1-x)
+
+        const pz = Math.sqrt(1-p.x*p.x-p.y*p.y)
+        const normal = Vec3.add(
+            Vec3.add(Vec3.mulScalar(axisX, p.x), Vec3.mulScalar(axisY, p.y)),
+            Vec3.mulScalar(dirReversed, pz)
+        )
+
+        // Multiplication to keep the normals perpendicular to the surface
+        return Vec3.normalize(Vec3.mul(normal, roughness))
+    }
 }
