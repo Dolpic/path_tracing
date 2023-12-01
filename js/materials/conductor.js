@@ -57,9 +57,9 @@ export default class Conductor extends Material{
             const reversedIn = Vec3.mulScalar(Vec3.clone(dirIn), -1)
             const microNormal = Vec3.normalize(Vec3.add(Vec3.clone(reversedIn), dirOut))
             const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
-            const D = this.TrowbridgeReitz(microNormal)
-            const f = D*this.MaskingShadowing(reversedIn, dirOut)/(4*cosI*Math.abs(dirOut.z))
-            const PDF = (D*(this.Masking(reversedIn)/cosI)*cosI_m) / (4*cosI_m)
+            const D = this.TrowbridgeReitz(microNormal, this.roughnessX, this.roughnessY)
+            const f = D*Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)/(4*cosI*Math.abs(dirOut.z))
+            const PDF = (D*(Utils.Masking(reversedIn, this.roughnessX, this.roughnessY)/cosI)*cosI_m) / (4*cosI_m)
             const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI_m)
             const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI_m), cosT)
             return Color.mulScalar(Color.clone(this.color), sampleFromHit?reflectance*f/PDF:reflectance*f)
@@ -92,32 +92,5 @@ export default class Conductor extends Material{
         )
         
         return (Complex.modulusSquared(r_parallel) + Complex.modulusSquared(r_perpendicular))/2
-    }
-    
-    TrowbridgeReitz(dir){
-        const cosThetaSqr = dir.z*dir.z
-        const tanISqr = 1/cosThetaSqr - 1
-        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr) 
-        const sinPhiSqr =  1 - cosPhiSqr
-        const cosI4 = cosThetaSqr*cosThetaSqr
-        const parenthesis = 1+tanISqr*(cosPhiSqr/(this.roughnessX*this.roughnessX) + sinPhiSqr/(this.roughnessY*this.roughnessY))
-        return 1/(Math.PI*this.roughnessX*this.roughnessY*cosI4*parenthesis*parenthesis)
-    }
-
-    MaskingLambda(dir){
-        const cosThetaSqr = dir.z*dir.z
-        const tanISqr = 1/cosThetaSqr - 1
-        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr) 
-        const sinPhiSqr =  1 - cosPhiSqr
-        const alphaSqr = this.roughnessX*this.roughnessX*cosPhiSqr + this.roughnessY*this.roughnessY*sinPhiSqr
-        return (Math.sqrt(1+alphaSqr*tanISqr)-1)/2
-    }
-
-    Masking(dir){
-        return 1/(1+this.MaskingLambda(dir))
-    }
-
-    MaskingShadowing(dirIn, dirOut){
-        return 1/(1+this.MaskingLambda(dirIn)+this.MaskingLambda(dirOut))
     }
 }

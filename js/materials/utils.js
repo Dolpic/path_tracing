@@ -76,4 +76,33 @@ export class Utils{
         // Multiplication to keep the normals perpendicular to the surface
         return Vec3.normalize(Vec3.mul(normal, roughness))
     }
+
+    static MaskingShadowing(dirIn, dirOut, roughnessX, roughnessY){
+        const maskingIn = Utils.MaskingLambda(dirIn, roughnessX, roughnessY)
+        const maskingOut = Utils.MaskingLambda(dirOut, roughnessX, roughnessY)
+        return 1/(1+maskingIn+maskingOut)
+    }
+
+    static Masking(dir, roughnessX, roughnessY){
+        return 1/(1+Utils.MaskingLambda(dir, roughnessX, roughnessY))
+    }    
+
+    static MaskingLambda(dir, roughnessX, roughnessY){
+        const cosThetaSqr = dir.z*dir.z
+        const tanISqr = 1/cosThetaSqr - 1
+        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr) 
+        const sinPhiSqr =  1 - cosPhiSqr
+        const alphaSqr = roughnessX*roughnessX*cosPhiSqr + roughnessY*roughnessY*sinPhiSqr
+        return (Math.sqrt(1+alphaSqr*tanISqr)-1)/2
+    }
+
+    static TrowbridgeReitz(dir, roughnessX, roughnessY){
+        const cosThetaSqr = dir.z*dir.z
+        const tanISqr = 1/cosThetaSqr - 1
+        const cosPhiSqr = dir.x*dir.x/(1-cosThetaSqr) 
+        const sinPhiSqr =  1 - cosPhiSqr
+        const cosI4 = cosThetaSqr*cosThetaSqr
+        const parenthesis = 1+tanISqr*(cosPhiSqr/(roughnessX*roughnessX) + sinPhiSqr/(roughnessY*roughnessY))
+        return 1/(Math.PI*roughnessX*roughnessY*cosI4*parenthesis*parenthesis)
+    }
 }
