@@ -9,8 +9,8 @@ export default class Conductor extends Material{
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
-        this.roughnessX = roughnessX
-        this.roughnessY = roughnessY
+        this.roughnessX = 0.1//roughnessX
+        this.roughnessY = 0.1//roughnessY
     }
 
     static deserialize(mat){
@@ -57,12 +57,12 @@ export default class Conductor extends Material{
             const reversedIn = Vec3.mulScalar(Vec3.clone(dirIn), -1)
             const microNormal = Vec3.normalize(Vec3.add(Vec3.clone(reversedIn), dirOut))
             const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
-            const D = this.TrowbridgeReitz(microNormal, this.roughnessX, this.roughnessY)
+            const D = Utils.TrowbridgeReitz(microNormal, this.roughnessX, this.roughnessY)
             const f = D*Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)/(4*cosI*Math.abs(dirOut.z))
             const PDF = (D*(Utils.Masking(reversedIn, this.roughnessX, this.roughnessY)/cosI)*cosI_m) / (4*cosI_m)
             const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI_m)
             const reflectance = this.fresnelReflectanceComplex(etaRatio, Complex.fromReal(cosI_m), cosT)
-            return Color.mulScalar(Color.clone(this.color), sampleFromHit?reflectance*f/PDF:reflectance*f)
+            return Color.mulScalar(Color.clone(this.color), reflectance*(sampleFromHit?f/PDF:f))
         }
     }
 

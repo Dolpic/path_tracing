@@ -4,7 +4,7 @@ import { sampleLight, LIGHTS } from "./Lights.js"
 import { Vec3 } from "./primitives.js"
 
 class Tracer{
-    constructor(objStructure, lights, maxDepth=100, lightSampling=true, timer=false){
+    constructor(objStructure, lights, maxDepth=10, lightSampling=true, timer=false){
         this.objStructure = objStructure
         this.lights    = lights.filter(l=>l.type!=LIGHTS.EnvironmentalLight)
         this.envLights = lights.filter(l=>l.type==LIGHTS.EnvironmentalLight)
@@ -31,6 +31,10 @@ class Tracer{
                 break
             }
             //if(this.timer) this.timer.step("Interaction")
+
+            /*if(i == this.maxDepth-1){
+                ray.color.r = 1
+            }*/
         }
     }
 

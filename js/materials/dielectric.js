@@ -10,8 +10,8 @@ export default class Dielectric extends Material{
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
 
-        this.roughnessX = 0//roughnessX
-        this.roughnessY = 0//roughnessY
+        this.roughnessX = 0.1//roughnessX
+        this.roughnessY = 0.1//roughnessY
     }
 
     static deserialize(mat){
@@ -38,35 +38,49 @@ export default class Dielectric extends Material{
             
         }else{
             const microNormal = Utils.TrowbridgeReitzMicrofacet(dirIn, this.roughnessX, this.roughnessY)
-            const cosI_m = Vec3.dot(dirIn, microNormal)
+            if(microNormal.z < 0){
+                console.error("Inverse micronormal")
+                Vec3.mulScalar(microNormal, -1)
+            }
+            const cosI_m = Math.abs(Vec3.dot(dirIn, microNormal))
+            if(Vec3.dot(dirIn, microNormal) > 0){
+                console.error("dirIn from opposite side as normal")
+            }
             const cosT = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI_m)
             const reflectance = cosT===false ? false : this.fresnelReflectance(etaRatio, cosI_m, cosT)
 
-            if(reflectance === false || reflectance > Math.random()){
+            if(reflectance === false /*|| reflectance > Math.random()*/){
                 dirOut = Utils.reflectWithNormal(dirIn, microNormal)
                 if(Utils.areSameHemisphere(dirIn, dirOut)){
-                    console.error("Not same hemisphere")
+                    return false
                 }
             }else{
-                const parallel      = Vec3.mulScalar(Vec3.clone(microNormal), -cosT)
-                const projected     = Vec3.add(dirIn, Vec3.mulScalar(Vec3.clone(microNormal), cosI_m))
-                const perpendicular = Vec3.mulScalar(projected, etaRatio)
-                dirOut = Vec3.add(parallel, perpendicular)
-                if(!Utils.areSameHemisphere(dirIn, dirOut)){
-                    console.error("Not same hemisphere")
+                const projected     = Vec3.add(Vec3.clone(dirIn), Vec3.mulScalar(Vec3.clone(microNormal), cosI_m*Math.sign(-Vec3.dot(dirIn, microNormal))))
+                if(Math.abs(Vec3.dot(microNormal, projected)) > 0.00001){
+                    console.error("Invalid projection")
                 }
+                const perpendicular = Vec3.mulScalar(projected, etaRatio)
+                const parallel      = Vec3.mulScalar(Vec3.clone(microNormal), cosT*Math.sign(Vec3.dot(dirIn, microNormal)))
+                dirOut = Vec3.add(parallel, perpendicular)
+                // Should never happen
+                if(Vec3.dot(microNormal, dirIn)*Vec3.dot(microNormal, dirOut) < 0){
+                    console.error("Same hemisphere")
+                    return false
+                }
+                // dirOut.z is always negative
+                //console.log(dirOut)
             }
         }
-
+        
         return {
             color: this.sampleLocal(dirIn, dirOut, true),
             direction: dirOut
         }
     }
 
-    sampleLocal(dirIn, dirOut, fromHitLocal=false){
+    sampleLocal(dirIn, dirOut, sampleFromHit=false){
         if(this.roughnessX == 0 && this.roughnessY == 0){
-            return fromHitLocal ? Color.mulScalar(Color.clone(this.color), 1/Math.abs(dirOut.z)) : Color.ZERO
+            return sampleFromHit ? Color.mulScalar(Color.clone(this.color), 1/Math.abs(dirOut.z)) : Color.ZERO
         }else{
             
 
@@ -75,51 +89,62 @@ export default class Dielectric extends Material{
             const etaRatio = etaFrom/etaTo
 
             const reversedIn = Vec3.mulScalar(Vec3.clone(dirIn), -1)
-            const microNormal = Vec3.normalize(Vec3.add(Vec3.mulScalar(Vec3.clone(dirOut), etaRatio) , reversedIn))
-            // Should we check that the normal is facing in the right direction ?
+            const cosI = Math.abs(reversedIn.z)
 
-            const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
-            const D = Utils.TrowbridgeReitz(microNormal)
-
-            if(fromHitLocal){
-
+            if(sampleFromHit){
                 // Note : In this section, the PDF and f should be both multiplied by the reflectance / transmittance, but as they are divided
                 // afterward, we can spare this computation
 
-                let f, PDF
+                const masking = Utils.Masking(reversedIn, this.roughnessX, this.roughnessY)
 
+                let f, PDF
                 // Reflection
                 if(Utils.areSameHemisphere(reversedIn, dirOut)){
-                    PDF = (D*(Utils.Masking(reversedIn, this.roughnessX, this.roughnessY)/reversedIn.z)*cosI_m) / (4*cosI_m) 
-                    f = D*Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)/(4*reversedIn.z*Math.abs(dirOut.z)) 
+
+                    const MaskingShadowing = Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)
+                    const microNormal = Vec3.normalize(Vec3.add(Vec3.clone(dirOut) , reversedIn))
+                    const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
+                    const D = Utils.TrowbridgeReitz(microNormal, this.roughnessX, this.roughnessY)
+
+                    PDF = (D*(masking/cosI)*cosI_m) / (4*cosI_m) 
+                    f = D*MaskingShadowing/(4*reversedIn.z*dirOut.z) 
+                    f*=0
                 
                 // Transmission
                 }else{
-                    const tmp = Vec3.dot(dirOut, microNormal) + Vec3.dot(reversedIn, microNormal) / etaRatio 
-                    const denominator = Math.abs(Vec3.dot(dirOut, microNormal)) / (tmp*tmp)
-                    PDF = (D*(Utils.Masking(reversedIn, this.roughnessX, this.roughnessY)/reversedIn.z)*cosI_m) / denominator 
+                    let correctedDirOut = Vec3.clone(dirOut)
+                    correctedDirOut.z *= -1
 
-                    const factor = Vec3.dot(dirOut, microNormal) * Vec3.dot(reversedIn, microNormal) / (reversedIn.z * dirOut.z * (tmp*tmp))
-                    f = D*Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)*Math.abs(factor)
+                    const MaskingShadowing = Utils.MaskingShadowing(reversedIn, correctedDirOut, this.roughnessX, this.roughnessY)
+                    const microNormal = Vec3.normalize(Vec3.add(Vec3.mulScalar(Vec3.clone(correctedDirOut), etaRatio) , reversedIn))
+                    const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
+                    const D = Utils.TrowbridgeReitz(microNormal, this.roughnessX, this.roughnessY)
+
+                    const tmp = Vec3.dot(correctedDirOut, microNormal) + Vec3.dot(reversedIn, microNormal) / etaRatio 
+                    const denominator = Math.abs(Vec3.dot(correctedDirOut, microNormal)) / (tmp*tmp)
+                    PDF = (D*(masking/cosI)*cosI_m) * denominator 
+
+                    const factor = Vec3.dot(correctedDirOut, microNormal) * Vec3.dot(reversedIn, microNormal) / (reversedIn.z * dirOut.z * (tmp*tmp))
+                    f = D*MaskingShadowing*Math.abs(factor)
                 }
                 return Color.mulScalar(Color.clone(this.color), f/PDF)
             }else{
+                /*const cosT = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI_m)
+                const reflectance = cosT===false ? false : this.fresnelReflectance(etaRatio, cosI_m, cosT)
 
-                const cosI = Math.abs(dirIn.z)
-                const cosT = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI)
-                const reflectance = cosT===false ? false : this.fresnelReflectance(etaRatio, cosI, cosT)
-
+                let f
                 // Reflection
                 if(Utils.areSameHemisphere(reversedIn, dirOut)){
-                    f = reflectance* D*Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)/(4*reversedIn.z*dirOut.z)
-                
+                    f = reflectance* D*MaskingShadowing/(4*reversedIn.z*dirOut.z)
                 // Transmission
                 }else{
                     const tmp = Vec3.dot(dirOut, microNormal) + Vec3.dot(reversedIn, microNormal) / etaRatio
                     const factor = Vec3.dot(dirOut, microNormal) * Vec3.dot(reversedIn, microNormal) / (reversedIn.z * dirOut.z * (tmp*tmp))
-                    f = (1-reflectance)*D*Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)*Math.abs(factor)
+                    f = (1-reflectance)*D*MaskingShadowing*Math.abs(factor)
                 }
-                return Color.mulScalar(Color.clone(this.color), f)
+                //console.log(f)
+                return Color.mulScalar(Color.clone(this.color), f)*/
+                return Color.ZERO
             }
         }
     }
