@@ -52,7 +52,7 @@ export class Utils{
 
     static TrowbridgeReitzMicrofacet(dirIn, roughnessX, roughnessY){
         const roughness = Vec3.new(roughnessX, roughnessY, 1)
-        const dirReversed = Vec3.mulScalar(Vec3.clone(dirIn), -1)
+        const dirReversed = dirIn.z > 0 ? Vec3.clone(dirIn) : Vec3.mulScalar(Vec3.clone(dirIn), -1)
 
         Vec3.normalize(Vec3.mul(dirReversed, roughness))
 
