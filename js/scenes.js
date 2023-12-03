@@ -52,7 +52,7 @@ export default class Scenes{
         return {
             materials:[
                 new Diffuse(Color.new(0.8, 0.4, 0.3)),
-                new Dielectric(Color.new(1, 1, 1), 1, 1.5),
+                new Dielectric(Color.new(0.95, 0.95, 0.95), 1, 1.5),
                 new Diffuse(Color.new(1,0,0,1)),
                 new Conductor(Color.new(0.9, 0.6, 0.1), Complex.fromReal(1), Complex.new(0.2, 3))
             ],
@@ -182,7 +182,7 @@ export default class Scenes{
             shapes:shapes,
             lights:[
                 new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.2),
-                new PointLight(Vec3.new(4, 3, -7), Color.new(1,1,1), 300)
+                new PointLight(Vec3.new(4, 3, -7), Color.new(1,1,1), 1200)
             ],
             camera: {
                 position: Vec3.new(1.3, 0, -3.75),

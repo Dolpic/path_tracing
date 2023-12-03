@@ -3,19 +3,19 @@ import { Material } from "./material.js"
 import { MaterialTypes, Utils } from "./utils.js"
 
 export default class Dielectric extends Material{
-    constructor(color, etaFrom=1, etaTo=1){
+    constructor(color, etaFrom=1, etaTo=1, roughnessX=0, roughnessY=0){
         super()
         this.type    = MaterialTypes.Dielectric
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
 
-        this.roughnessX = 0.5//roughnessX
-        this.roughnessY = 0.5//roughnessY
+        this.roughnessX = roughnessX
+        this.roughnessY = roughnessY
     }
 
     static deserialize(mat){
-        return new Dielectric(mat.color, mat.etaFrom, mat.etaTo)
+        return new Dielectric(mat.color, mat.etaFrom, mat.etaTo, mat.roughnessX, mat.roughnessY)
     }
 
     hitLocal(dirIn){
@@ -52,8 +52,11 @@ export default class Dielectric extends Material{
                 const sign = Math.sign(Vec3.dot(dirIn, microNormal))
                 const projected     = Vec3.add(Vec3.clone(dirIn), Vec3.mulScalar(Vec3.clone(microNormal), cosI_m*(-sign)))
                 const perpendicular = Vec3.mulScalar(projected, etaRatio)
-                const parallel      = Vec3.mulScalar(Vec3.clone(microNormal), cosT*sign)
+                const parallel      = Vec3.mulScalar(Vec3.clone(microNormal), cosT*sign)                             
                 dirOut = Vec3.add(parallel, perpendicular)
+                if(!Utils.areSameHemisphere(dirIn, dirOut)){
+                    return false
+                }
             }
         }
         
@@ -82,13 +85,8 @@ export default class Dielectric extends Material{
             const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
             const D = Utils.TrowbridgeReitz(microNormal, this.roughnessX, this.roughnessY)
 
-            if(!isReflection){
-                dirOut = Vec3.clone(dirOut)
-                dirOut.z *= -1
-            }
-
             const cosT = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI_m)
-             // In case of total internal reflection, we consider the reflectance to be 1
+            // In case of total internal reflection, we consider the reflectance to be 1
             const reflectance = cosT===false ? 1 : this.fresnelReflectance(etaRatio, cosI_m, cosT)
 
             let f
@@ -96,7 +94,7 @@ export default class Dielectric extends Material{
             if(isReflection){
                 f = reflectance*D*MaskingShadowing/(4*reversedIn.z*dirOut.z)
                 if(sampleFromHit){
-                    PDF = reflectance*(D*(masking/cosI)*cosI_m) / (4*cosI_m) 
+                    PDF = reflectance*(D*(masking/cosI)*cosI_m) / (4*cosI_m)
                 }
             }else{
                 const tmp = Vec3.dot(dirOut, microNormal) + Vec3.dot(reversedIn, microNormal) * etaRatio 
