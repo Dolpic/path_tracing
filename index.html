@@ -19,7 +19,7 @@
         <hr>
         <div class="explanations">
             <p>This is a very simple path tracer implemented purely in javascript.</p>
-            <p>For now it is very limited and not well optimized. Numerous new features are planned. For now it has the following features : </p>
+            <p>For now it is not well optimized. Numerous new features are planned. For now it has the following features : </p>
             <ul>
                 <li>Geometry including</li>
                 <ul>
@@ -43,13 +43,13 @@
                     <li>General dielectric model for smooth surfaces
                         <ul>
                             <li>with reflectance derived from the <a href="https://en.wikipedia.org/wiki/Fresnel_equations">Fresnel equations</a></li>
-                            <!--<li>with roughness using the Trowbridge-Reitz (GGX) distribution with the Cook-Torrance model</li>-->
+                            <li>with roughness (isotropic and anisotropic) using the Trowbridge-Reitz (GGX) distribution with the Cook-Torrance model</li>
                         </ul>
                     </li>
                     <li>General conductor and semiconductor reflection model
                         <ul>
                             <li>with reflectance derived from the <a href="https://en.wikipedia.org/wiki/Fresnel_equations">Fresnel equations</a></li>
-                            <li>with roughness using the Trowbridge-Reitz (GGX) distribution with the Cook-Torrance model</li>
+                            <li>with roughness (isotropic and anisotropic) using the Trowbridge-Reitz (GGX) distribution with the Cook-Torrance model</li>
                         </ul>
                     </li>
                 </ul>
@@ -112,6 +112,7 @@
                         </select>
                         <input type="color" id="materialColor" value="#ffffff"/>
                         <div id="sceneParams_materialTest_material_sliders"></div>
+                        <p>Roughness X and Y should be both greater than 0 to see some roughness effect. If X != Y then the roughness is anisotropic.</>
                         <p>Model</p>
                         <select id="sceneParams_materialTest_model">
                             <option value="teapot/teapot_smooth_corrected">Teapot</option>
@@ -142,15 +143,17 @@
                 new Slider("cameraRotation", "X", 0, val=>document.PARAMS.camera.rotation.x=val, -180, 180, 1),
                 new Slider("cameraRotation", "Y", 0, val=>document.PARAMS.camera.rotation.y=val, -180, 180, 1),
                 new Slider("cameraRotation", "Z", 0, val=>document.PARAMS.camera.rotation.z=val, -180, 180, 1),
-                new Slider("cameraLens", "Field of view",  45, val=>document.PARAMS.camera.fieldOfView=val,            5, 170),
-                new Slider("cameraLens", "Lens radius",    0,  val=>document.PARAMS.camera.lens.radius=val,    0, 1),
+                new Slider("cameraLens", "Field of view",  45, val=>document.PARAMS.camera.fieldOfView=val, 5, 170),
+                new Slider("cameraLens", "Lens radius",    0,  val=>document.PARAMS.camera.lens.radius=val, 0, 1),
                 new Slider("cameraLens", "Focal distance", 0,  val=>document.PARAMS.camera.lens.focalDistance=val, 0, 10),
-                new Slider("renderingParameters", "Samples per pixel", 25,  val=>document.PARAMS.samples_per_pixel=val, 2, 150, 1, 0),
-                new Slider("sceneParams_materialTest_material_sliders", "Refraction Index", 1.5, ()=>{}, 0.1, 5, 0.01)
+                new Slider("renderingParameters", "Samples per pixel", 25, val=>document.PARAMS.samples_per_pixel=val, 2, 150, 1, 0),
+                new Slider("sceneParams_materialTest_material_sliders", "Refraction Index", 1.5, ()=>{}, 0.1, 5, 0.01),
+                new Slider("sceneParams_materialTest_material_sliders", "RoughnessX", 0, ()=>{}, 0, 1, 0.01),
+                new Slider("sceneParams_materialTest_material_sliders", "RoughnessY", 0, ()=>{}, 0, 1, 0.01)
             ]
+            document.PARAMS.samples_per_pixel = document.STATE.ui.sliders[9].getValue()
 
             document.sceneChanged()
-
         }
 
         document.sceneChanged = () => {
@@ -172,6 +175,8 @@
                     const model = document.getElementById("sceneParams_materialTest_model").value
                     const color = colorHexToRGB(document.getElementById("materialColor").value)
                     const IoR = document.STATE.ui.sliders[10].getValue()
+                    const roughnessX = document.STATE.ui.sliders[11].getValue()
+                    const roughnessY = document.STATE.ui.sliders[12].getValue()
                     let material
                     switch(document.getElementById("sceneParams_materialTest_material").value){
                         case "diffuse":
@@ -184,10 +189,10 @@
                             material = new Transmitter(color, 1, IoR)
                             break
                         case "dielectric":
-                            material = new Dielectric(color, 1, IoR)
+                            material = new Dielectric(color, 1, IoR, roughnessX, roughnessY)
                             break
                         case "conductor":
-                            material = new Conductor(color, Complex.fromReal(1), Complex.new(0.2, 3))
+                            material = new Conductor(color, Complex.fromReal(1), Complex.new(0.2, 3), roughnessX, roughnessY)
                             break
                     }
                     return Scenes.MaterialTest(material, model)

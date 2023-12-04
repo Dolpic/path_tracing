@@ -9,8 +9,8 @@ export default class Conductor extends Material{
         this.color   = color
         this.etaFrom = etaFrom
         this.etaTo   = etaTo
-        this.roughnessX = 0.1//roughnessX
-        this.roughnessY = 0.1//roughnessY
+        this.roughnessX = roughnessX
+        this.roughnessY = roughnessY
     }
 
     static deserialize(mat){
@@ -19,7 +19,7 @@ export default class Conductor extends Material{
 
     hitLocal(dirIn){
         let dirOut
-        if(this.roughnessX == 0 && this.roughnessY == 0){
+        if(this.roughnessX == 0 || this.roughnessY == 0){
             dirOut = Utils.reflect(Vec3.clone(dirIn))
         }else{
             const microNormal = Utils.TrowbridgeReitzMicrofacet(dirIn, this.roughnessX, this.roughnessY)
@@ -46,7 +46,7 @@ export default class Conductor extends Material{
             etaRatio = Complex.div(Complex.clone(this.etaFrom), this.etaTo)
         }
 
-        if(this.roughnessX == 0 && this.roughnessY == 0){
+        if(this.roughnessX == 0 || this.roughnessY == 0){
             if(!sampleFromHit) return Color.clone(Color.ZERO)
             const cosI = Math.abs(dirIn.z)
             const cosT = this.cosThetaSnellLawComplex(etaRatio, cosI)

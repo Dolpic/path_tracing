@@ -53,8 +53,8 @@ export default class Scenes{
             materials:[
                 new Diffuse(Color.new(0.8, 0.4, 0.3)),
                 new Dielectric(Color.new(0.95, 0.95, 0.95), 1, 1.5),
-                new Diffuse(Color.new(1,0,0,1)),
-                new Conductor(Color.new(0.9, 0.6, 0.1), Complex.fromReal(1), Complex.new(0.2, 3))
+                new Dielectric(Color.new(1, 1, 1), 1, 1.5),
+                new Conductor(Color.new(0.9, 0.6, 0.1), Complex.fromReal(1), Complex.new(0.2, 3), 0.2, 0.1)
             ],
             objects:[
                 {
@@ -65,8 +65,8 @@ export default class Scenes{
             ],
             shapes:[
                 new Sphere( Vec3.new(0,   -80.98, -4), 80,    0),
-                new Sphere( Vec3.new(1.2, 1.2, -5), 0.5,      1),
-                new Sphere( Vec3.new(-1.2,  1.2, -5), 0.5,    1),
+                new Sphere( Vec3.new(1.2, 1.2, -5), 0.5,      2),
+                new Sphere( Vec3.new(-1.2,  1.2, -5), 0.5,    2),
 
                 
                 new Sphere( Vec3.new(-0.6, 1.5, -5), 0.1,     0),
@@ -77,17 +77,17 @@ export default class Scenes{
                 new Sphere( Vec3.new(0.4, 1.5, -5), 0.1,      0),
                 new Sphere( Vec3.new(0.6, 1.5, -5), 0.1,      0),
 
-                new Sphere( Vec3.new(-0.3, -0.88, -2.7), 0.1, 0),
-                new Sphere( Vec3.new(0.3, -0.88, -2.7), 0.1,  0),
+                new Sphere( Vec3.new(-0.3, -0.88, -2.7), 0.1, 1),
+                new Sphere( Vec3.new(0.3, -0.88, -2.7), 0.1,  1),
 
-                new Sphere( Vec3.new(-0.3, -0.68, -2.7), 0.1, 0),
-                new Sphere( Vec3.new(0.3, -0.68, -2.7), 0.1,  0),
+                new Sphere( Vec3.new(-0.3, -0.68, -2.7), 0.1, 3),
+                new Sphere( Vec3.new(0.3, -0.68, -2.7), 0.1,  3),
 
-                new Sphere( Vec3.new(-0.3, -0.48, -2.7), 0.1, 0),
-                new Sphere( Vec3.new(0.3, -0.48, -2.7), 0.1,  0),
+                new Sphere( Vec3.new(-0.3, -0.48, -2.7), 0.1, 1),
+                new Sphere( Vec3.new(0.3, -0.48, -2.7), 0.1,  1),
 
-                new Sphere( Vec3.new(-0.3, -0.28, -2.7), 0.1, 0),
-                new Sphere( Vec3.new(0.3, -0.28, -2.7), 0.1,  0),
+                new Sphere( Vec3.new(-0.3, -0.28, -2.7), 0.1, 3),
+                new Sphere( Vec3.new(0.3, -0.28, -2.7), 0.1,  3),
 
 
                 new Sphere( Vec3.new(-0.7, -0.86, -3), 0.15,  1),
@@ -97,7 +97,8 @@ export default class Scenes{
                 new Sphere( Vec3.new(0.7, -0.56, -3), 0.15,   1),
             ],
             lights: [
-                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.8)
+                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.6),
+                new PointLight(Vec3.new(5, 5, -5), Color.new(1,1,1), 400)
             ],
             camera: {
                 position: Vec3.new(0,0,0),
@@ -115,32 +116,32 @@ export default class Scenes{
         return {
             materials:[
                 new Diffuse(Color.new(0.8, 0.4, 0.3)),
-                new Dielectric(Color.new(0.9, 0.9, 0.9), 1, 1.4),
-                new Conductor(Color.new(0.9, 0.6, 0.1), Complex.fromReal(1), Complex.new(0.2, 3))
+                new Dielectric(Color.new(0.96, 0.96, 0.96), 1, 1.5, 0.005, 0.005),
+                new Conductor(Color.new(0.9, 0.6, 0.1), Complex.fromReal(1), Complex.new(0.2, 3), 0.2, 0.2)
             ],
             objects:[
                 {
                     file: "dragon/dragon_very_simple",
                     material: 0,
-                    transformMatrix: (new Matrix()).transform([-1, -1, -5], [0,-90,0], [1.5, 1.5, 1.5])
+                    transformMatrix: (new Matrix()).transform([-1.2, -1, -5.2], [0,-130,0], [1.5, 1.5, 1.5])
                 },
                 {
                     file: "dragon/dragon_very_simple",
                     material: 1,
-                    transformMatrix: (new Matrix()).transform([0, -1, -5], [0,-90,0], [1.5, 1.5, 1.5])
+                    transformMatrix: (new Matrix()).transform([0.2, -1, -4.7], [0,-130,0], [1.5, 1.5, 1.5])
                 },
                 {
                     file: "dragon/dragon_very_simple",
                     material: 2,
-                    transformMatrix: (new Matrix()).transform([1, -1, -5], [0,-90,0], [1.5, 1.5, 1.5])
+                    transformMatrix: (new Matrix()).transform([1.2, -1, -4.2], [0,-130,0], [1.5, 1.5, 1.5])
                 }
             ],
             shapes:[
                 new Sphere( Vec3.new(0, -80.98, -4), 80, 0),
             ],
             lights:[
-                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.2),
-                new PointLight(Vec3.new(2, 5, -5), Color.new(1,1,1), 400)
+                new EnvironmentalLight(Color.new(0.7, 0.7, 1), 0.15),
+                new PointLight(Vec3.new(2, 3, -2), Color.new(1,1,1), 800)
             ],
             camera: {
                 position: Vec3.new(0,0,0),

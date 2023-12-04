@@ -26,8 +26,7 @@ export default class Dielectric extends Material{
         const etaRatio = etaFrom/etaTo
 
         let dirOut
-        if(this.roughnessX == 0 && this.roughnessY == 0){
-
+        if(this.roughnessX == 0 || this.roughnessY == 0){
             const cosT = Utils.cosTransmittedFromSnellLaw(etaRatio, cosI)
             const reflectance = cosT===false ? false : this.fresnelReflectance(etaRatio, cosI, cosT)
 
@@ -67,7 +66,7 @@ export default class Dielectric extends Material{
     }
 
     sampleLocal(dirIn, dirOut, sampleFromHit=false){
-        if(this.roughnessX == 0 && this.roughnessY == 0){
+        if(this.roughnessX == 0 || this.roughnessY == 0){
             return sampleFromHit ? Color.mulScalar(Color.clone(this.color), 1/Math.abs(dirOut.z)) : Color.ZERO
         }else{
             const etaFrom  = dirIn.z > 0 ? this.etaTo   : this.etaFrom
@@ -76,11 +75,11 @@ export default class Dielectric extends Material{
 
             const reversedIn = Vec3.mulScalar(Vec3.clone(dirIn), -1)
             const cosI = Math.abs(reversedIn.z)
-            const masking = Utils.Masking(reversedIn, this.roughnessX, this.roughnessY)
 
             const isReflection = Utils.areSameHemisphere(reversedIn, dirOut)
 
-            const MaskingShadowing = Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)
+            const masking = Utils.Masking(reversedIn, this.roughnessX, this.roughnessY)
+            const maskingShadowing = Utils.MaskingShadowing(reversedIn, dirOut, this.roughnessX, this.roughnessY)
             const microNormal = Vec3.normalize(Vec3.add(Vec3.mulScalar(Vec3.clone(dirOut), isReflection?1:1/etaRatio) , reversedIn))
             const cosI_m = Math.abs(Vec3.dot(reversedIn, microNormal))
             const D = Utils.TrowbridgeReitz(microNormal, this.roughnessX, this.roughnessY)
@@ -89,17 +88,16 @@ export default class Dielectric extends Material{
             // In case of total internal reflection, we consider the reflectance to be 1
             const reflectance = cosT===false ? 1 : this.fresnelReflectance(etaRatio, cosI_m, cosT)
 
-            let f
-            let PDF = 1
+            let f, PDF = 1
             if(isReflection){
-                f = reflectance*D*MaskingShadowing/(4*reversedIn.z*dirOut.z)
+                f = reflectance*D*maskingShadowing/(4*reversedIn.z*dirOut.z)
                 if(sampleFromHit){
                     PDF = reflectance*(D*(masking/cosI)*cosI_m) / (4*cosI_m)
                 }
             }else{
                 const tmp = Vec3.dot(dirOut, microNormal) + Vec3.dot(reversedIn, microNormal) * etaRatio 
                 const factor = Vec3.dot(dirOut, microNormal) * Vec3.dot(reversedIn, microNormal) / (reversedIn.z * dirOut.z * (tmp*tmp))
-                f = (1-reflectance)*D*MaskingShadowing*Math.abs(factor)
+                f = (1-reflectance)*D*maskingShadowing*Math.abs(factor)
                 if(sampleFromHit){
                     PDF = (1-reflectance)*(D*(masking/cosI)*cosI_m) * (Math.abs(Vec3.dot(dirOut, microNormal)) / (tmp*tmp)) 
                 }
